@@ -372,7 +372,11 @@ async function doSignIn() {
   btn.disabled = true; btn.textContent = 'Signing in...';
   try {
     const { data, error } = await getSB().auth.signInWithPassword({ email, password });
-    if (error) { setAuthError(error.message); return; }
+    if (error) {
+      localStorage.removeItem('tg_session');
+      setAuthError(error.message);
+      return;
+    }
     currentUser = { access_token: data.session.access_token, user: data.user };
     localStorage.setItem('tg_session', JSON.stringify(currentUser));
     await loadAgent();
@@ -400,7 +404,13 @@ async function doSignUp() {
     const { data, error } = await getSB().auth.signUp({ email, password });
     console.log('signUp response:', JSON.stringify({ data: data ? { user: data.user?.id, session: !!data.session } : null, error }));
     if (error) { setAuthError(error.message); return; }
-    if (!data.session) { setAuthError('Please check your email to confirm your account, then sign in.'); return; }
+    if (!data.session) {
+      // No session from signup — try signing in immediately
+      const { data: signInData, error: signInError } = await getSB().auth.signInWithPassword({ email, password });
+      if (signInError || !signInData.session) { setAuthError('Account created! Please sign in.'); showAuthTab('signin'); document.getElementById('signin-email').value = email; return; }
+      data.session = signInData.session;
+      data.user = signInData.user;
+    }
     currentUser = { access_token: data.session.access_token, user: data.user };
     localStorage.setItem('tg_session', JSON.stringify(currentUser));
     await dbFetch('agents', {
