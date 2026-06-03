@@ -433,9 +433,11 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPA_URL = 'https://kcfumuctzrzxyusfwcmx.supabase.co';
 const SUPA_KEY = 'sb_publishable_VXkujxXi0-tqUuPu_g1Pbg_EQIlMikj';
+
 
 let currentUser = null;
 let currentAgent = null;
@@ -446,14 +448,21 @@ let setupData = { zip: '', neighborhood: '', vendors: {}, removed: {}, picks: []
 let guidePicksSubcat = null;
 
 // ==================== SUPABASE ====================
+let supabase;
+
+function initSupabase() {
+  supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+}
+
 async function supa(path, options = {}) {
   const { headers: h = {}, ...rest } = options;
+  const token = currentUser?.access_token || SUPA_KEY;
   const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
     ...rest,
     cache: 'no-store',
     headers: {
       'apikey': SUPA_KEY,
-      'Authorization': 'Bearer ' + (currentUser?.access_token || SUPA_KEY),
+      'Authorization': 'Bearer ' + token,
       'Content-Type': 'application/json',
       'Prefer': 'return=representation',
       ...h
@@ -461,17 +470,6 @@ async function supa(path, options = {}) {
   });
   const text = await res.text();
   try { return text ? JSON.parse(text) : null; } catch { return null; }
-}
-
-async function supaAuth(endpoint, body) {
-  const res = await fetch(SUPA_URL + '/auth/v1/' + endpoint, {
-    method: 'POST',
-    headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  console.log('supaAuth', endpoint, res.status, data);
-  return data;
 }
 
 // ==================== AUTH ====================
@@ -490,15 +488,16 @@ async function signIn() {
   if (!email || !password) { setAuthError('Please fill in all fields.'); return; }
   btn.disabled = true; btn.textContent = 'Signing in...';
   try {
-    const data = await supaAuth('token?grant_type=password', { email, password });
-    if (data.error) { setAuthError(data.error_description || 'Sign in failed.'); return; }
-    currentUser = data;
-    localStorage.setItem('tg_session', JSON.stringify(data));
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setAuthError(error.message); return; }
+    currentUser = { access_token: data.session.access_token, user: data.user };
+    localStorage.setItem('tg_session', JSON.stringify(currentUser));
     await loadAgent();
     showScreen('dashboard');
     await loadGuides();
   } catch(e) {
     setAuthError('Something went wrong. Try again.');
+    console.error(e);
   } finally {
     btn.disabled = false; btn.textContent = 'Sign in';
   }
@@ -515,11 +514,12 @@ async function signUp() {
   if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return; }
   btn.disabled = true; btn.textContent = 'Creating account...';
   try {
-    const data = await supaAuth('signup', { email, password });
-    if (data.error) { setAuthError(data.error_description || 'Sign up failed.'); return; }
-    if (!data.access_token) { setAuthError('Check your email to confirm your account, then sign in.'); return; }
-    currentUser = data;
-    localStorage.setItem('tg_session', JSON.stringify(data));
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    console.log('signup result:', data, error);
+    if (error) { setAuthError(error.message); return; }
+    if (!data.session) { setAuthError('Check your email to confirm your account, then sign in.'); return; }
+    currentUser = { access_token: data.session.access_token, user: data.user };
+    localStorage.setItem('tg_session', JSON.stringify(currentUser));
     await supa('agents', {
       method: 'POST',
       body: JSON.stringify({ id: data.user.id, name: first + ' ' + last, brokerage, email })
@@ -529,12 +529,14 @@ async function signUp() {
     await loadGuides();
   } catch(e) {
     setAuthError('Something went wrong. Try again.');
+    console.error(e);
   } finally {
     btn.disabled = false; btn.textContent = 'Create account';
   }
 }
 
 function signOut() {
+  supabase.auth.signOut();
   currentUser = null; currentAgent = null; guides = [];
   localStorage.removeItem('tg_session');
   showScreen('auth');
@@ -976,6 +978,7 @@ function showToast(msg) {
 
 // ==================== INIT ====================
 window.addEventListener('load', () => {
+  initSupabase();
   const params = new URLSearchParams(window.location.search);
   const slug = params.get('guide');
   if (slug) { loadGuideBySlug(slug); return; }
