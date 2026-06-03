@@ -724,6 +724,7 @@ function timeAgo(ts) {
 }
 
 function showScreen(name) {
+  console.log('showScreen:', name);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
 }
@@ -744,12 +745,19 @@ window.addEventListener('load', function() {
   const saved = localStorage.getItem('tg_session');
   if (saved) {
     try {
-      currentUser = JSON.parse(saved);
-      loadAgent().then(() => { showScreen('dashboard'); loadGuides(); });
-    } catch { showScreen('auth'); }
-  } else {
-    showScreen('auth');
+      const session = JSON.parse(saved);
+      if (session && session.access_token && session.user) {
+        currentUser = session;
+        loadAgent().catch(e => console.error(e)).finally(() => {
+          showScreen('dashboard');
+          loadGuides().catch(e => console.error(e));
+        });
+        return;
+      }
+    } catch(e) { console.error(e); }
+    localStorage.removeItem('tg_session');
   }
+  showScreen('auth');
 });
 </script>
 </body>
