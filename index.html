@@ -265,7 +265,7 @@
       </div>
       <div class="field"><label>Brokerage</label><input type="text" id="signup-brokerage" placeholder="Ensemble Real Estate" /></div>
       <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@brokerage.com" /></div>
-      <div class="field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 8 characters" /></div>
+      <div class="field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 6 characters" /></div>
       <button class="btn btn-primary btn-full" onclick="signUp()">Create account</button>
     </div>
     <p class="auth-error" id="auth-error"></p>
@@ -469,7 +469,9 @@ async function supaAuth(endpoint, body) {
     headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
-  return await res.json();
+  const data = await res.json();
+  console.log('supaAuth', endpoint, res.status, data);
+  return data;
 }
 
 // ==================== AUTH ====================
@@ -510,7 +512,7 @@ async function signUp() {
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   if (!first || !email || !password) { setAuthError('Please fill in all required fields.'); return; }
-  if (password.length < 8) { setAuthError('Password must be at least 8 characters.'); return; }
+  if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return; }
   btn.disabled = true; btn.textContent = 'Creating account...';
   try {
     const data = await supaAuth('signup', { email, password });
