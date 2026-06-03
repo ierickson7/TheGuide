@@ -256,7 +256,7 @@
     <div id="auth-signin">
       <div class="field"><label>Email</label><input type="email" id="signin-email" placeholder="you@brokerage.com" /></div>
       <div class="field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" /></div>
-      <button class="btn btn-primary btn-full" onclick="signIn()">Sign in</button>
+      <button class="btn btn-primary btn-full" onclick="signIn(this)">Sign in</button>
     </div>
     <div id="auth-signup" style="display:none;">
       <div class="field-row">
@@ -266,7 +266,7 @@
       <div class="field"><label>Brokerage</label><input type="text" id="signup-brokerage" placeholder="Ensemble Real Estate" /></div>
       <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@brokerage.com" /></div>
       <div class="field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 6 characters" /></div>
-      <button class="btn btn-primary btn-full" onclick="signUp()">Create account</button>
+      <button class="btn btn-primary btn-full" onclick="signUp(this)">Create account</button>
     </div>
     <p class="auth-error" id="auth-error"></p>
   </div>
@@ -481,8 +481,7 @@ function setAuthTab(tab) {
   document.getElementById('auth-error').textContent = '';
 }
 
-async function signIn() {
-  const btn = event.target;
+async function signIn(btn) {
   const email = document.getElementById('signin-email').value.trim();
   const password = document.getElementById('signin-password').value;
   if (!email || !password) { setAuthError('Please fill in all fields.'); return; }
@@ -503,8 +502,7 @@ async function signIn() {
   }
 }
 
-async function signUp() {
-  const btn = event.target;
+async function signUp(btn) {
   const first = document.getElementById('signup-first').value.trim();
   const last = document.getElementById('signup-last').value.trim();
   const brokerage = document.getElementById('signup-brokerage').value.trim();
