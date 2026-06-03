@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Guide.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --deep: #39083A;
+    --deep-light: #5a1260;
+    --red: #FD5247;
+    --red-dark: #d93d33;
+    --cream: #FAF5E7;
+    --cream-dark: #ede8d6;
+    --text: #1a1a1a;
+    --text-muted: #666;
+    --text-faint: #aaa;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.18);
+    --bg: #fff;
+    --bg-secondary: #f7f5f0;
+    --success-bg: #EAF3DE;
+    --success-text: #27500A;
+    --radius: 12px;
+    --radius-lg: 18px;
+  }
+
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg-secondary); color: var(--text); min-height: 100vh; }
+
+  /* SCREENS */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: block; }
+
+  /* NAV */
+  .nav { background: var(--deep); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .nav-logo { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--cream); font-weight: 400; cursor: pointer; }
+  .nav-logo span { color: var(--red); }
+  .nav-right { display: flex; align-items: center; gap: 10px; }
+  .nav-agent { display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(250,245,231,0.6); }
+  .nav-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--deep-light); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: var(--cream); border: 1.5px solid rgba(250,245,231,0.2); flex-shrink: 0; }
+  .nav-signout { font-size: 12px; color: rgba(250,245,231,0.4); background: none; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+
+  /* BUTTONS */
+  .btn { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; padding: 10px 20px; border-radius: var(--radius); border: none; cursor: pointer; transition: opacity 0.15s; display: inline-flex; align-items: center; gap: 7px; }
+  .btn:hover { opacity: 0.88; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--deep); color: var(--cream); }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-ghost { background: var(--bg); color: var(--text-muted); border: 0.5px solid var(--border-strong); }
+  .btn-sm { font-size: 12px; padding: 6px 14px; border-radius: 8px; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* FORMS */
+  input, textarea, select {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    width: 100%;
+    padding: 10px 14px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, textarea:focus { border-color: var(--deep); }
+  textarea { resize: none; }
+  .field { margin-bottom: 14px; }
+  .field label { font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+
+  /* CARDS */
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; }
+  .card + .card { margin-top: 10px; }
+
+  /* PILLS */
+  .pill { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+  .pill-live { background: var(--success-bg); color: var(--success-text); }
+  .pill-draft { background: var(--bg-secondary); color: var(--text-faint); }
+  .pill-new { background: var(--success-bg); color: var(--success-text); }
+
+  /* SECTION LABEL */
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); font-weight: 500; margin-bottom: 10px; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; font-size: 13px; padding: 10px 20px; border-radius: 20px; display: none; z-index: 9999; white-space: nowrap; }
+
+  /* OVERLAY */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--bg); border-radius: var(--radius-lg); padding: 1.5rem; width: 100%; max-width: 400px; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 400; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.6; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
+
+  /* ==================== AUTH SCREEN ==================== */
+  #screen-auth { background: var(--deep); display: flex; align-items: center; justify-content: center; }
+  .auth-box { background: var(--bg); border-radius: var(--radius-lg); padding: 2rem; width: 100%; max-width: 380px; margin: 20px; }
+  .auth-logo { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--deep); font-weight: 400; text-align: center; margin-bottom: 6px; }
+  .auth-logo span { color: var(--red); }
+  .auth-sub { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 1.5rem; }
+  .auth-tabs { display: flex; border: 0.5px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.25rem; }
+  .auth-tab { flex: 1; padding: 9px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: var(--bg); color: var(--text-muted); font-family: 'DM Sans', sans-serif; }
+  .auth-tab.active { background: var(--deep); color: var(--cream); }
+  .auth-tab:first-child { border-right: 0.5px solid var(--border-strong); }
+  .auth-error { font-size: 12px; color: var(--red); margin-top: 8px; text-align: center; min-height: 18px; }
+
+  /* ==================== DASHBOARD SCREEN ==================== */
+  #screen-dashboard { background: var(--bg-secondary); }
+  .dashboard-wrap { max-width: 680px; margin: 0 auto; padding: 20px 16px; }
+  .dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .dash-stat { background: var(--bg); border-radius: var(--radius); padding: 14px; text-align: center; border: 0.5px solid var(--border); }
+  .dash-stat-val { font-size: 26px; font-weight: 500; color: var(--text); }
+  .dash-stat-label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 2px; }
+  .dash-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .dash-filters { display: flex; gap: 6px; }
+  .filter-btn { font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 5px 13px; border-radius: 20px; border: 0.5px solid var(--border-strong); background: var(--bg); color: var(--text-muted); cursor: pointer; }
+  .filter-btn.active { background: var(--deep); color: var(--cream); border-color: var(--deep); }
+  .guide-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .guide-icon { width: 42px; height: 42px; border-radius: 10px; background: var(--deep); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .guide-info { flex: 1; min-width: 0; }
+  .guide-name { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; display: flex; align-items: center; gap: 7px; }
+  .guide-meta { font-size: 12px; color: var(--text-faint); }
+  .guide-views { font-size: 12px; color: var(--text-faint); text-align: right; min-width: 55px; }
+  .guide-views strong { font-size: 16px; font-weight: 500; color: var(--text); display: block; }
+  .guide-actions { display: flex; gap: 6px; }
+  .empty-state { text-align: center; padding: 3rem; color: var(--text-faint); font-size: 14px; }
+
+  /* ==================== SETUP SCREEN ==================== */
+  #screen-setup { background: var(--bg-secondary); }
+  .setup-wrap { max-width: 600px; margin: 0 auto; padding: 20px 16px; }
+  .setup-progress { display: flex; align-items: center; gap: 6px; margin-bottom: 1.5rem; }
+  .prog-step { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-faint); }
+  .prog-step.active { color: var(--text); font-weight: 500; }
+  .prog-step.done { color: var(--deep); }
+  .prog-num { width: 22px; height: 22px; border-radius: 50%; border: 0.5px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-size: 10px; background: var(--bg); }
+  .prog-step.active .prog-num, .prog-step.done .prog-num { background: var(--deep); border-color: var(--deep); color: var(--cream); }
+  .prog-line { flex: 1; height: 0.5px; background: var(--border-strong); }
+  .setup-step { display: none; }
+  .setup-step.active { display: block; }
+  .setup-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
+
+  /* Loading */
+  .loading-card { text-align: center; padding: 3rem; }
+  .spinner { width: 36px; height: 36px; border: 2px solid rgba(57,8,58,0.15); border-top-color: var(--deep); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text-muted); }
+
+  /* Review list */
+  .review-cat { margin-bottom: 1.25rem; }
+  .review-cat-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .review-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+  .review-row:last-child { border-bottom: none; }
+  .review-name { font-size: 13px; color: var(--text); flex: 1; }
+  .review-rating { font-size: 11px; color: #c07a00; }
+  .review-name.removed { text-decoration: line-through; opacity: 0.35; }
+  .remove-btn { background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 18px; line-height: 1; padding: 2px 4px; border-radius: 4px; }
+  .remove-btn:hover { color: var(--red); }
+
+  /* Picks */
+  .pick-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px; background: rgba(57,8,58,0.04); border-radius: var(--radius); margin-bottom: 8px; }
+  .pick-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--deep); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pick-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .pick-note { font-size: 11px; color: var(--text-muted); font-style: italic; }
+  .pick-remove { background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 16px; margin-left: auto; }
+
+  /* Publish */
+  .publish-card { background: var(--deep); border-radius: var(--radius-lg); padding: 1.5rem; text-align: center; margin-bottom: 1rem; }
+  .publish-check { width: 48px; height: 48px; border-radius: 50%; background: rgba(250,245,231,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 22px; }
+  .publish-title { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--cream); margin-bottom: 4px; }
+  .publish-sub { font-size: 12px; color: rgba(250,245,231,0.5); margin-bottom: 1.25rem; }
+  .link-box { background: rgba(250,245,231,0.08); border: 0.5px solid rgba(250,245,231,0.15); border-radius: var(--radius); padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+  .link-text { font-size: 12px; color: rgba(250,245,231,0.7); flex: 1; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .copy-btn { font-size: 11px; color: #fff; background: var(--red); border: none; border-radius: 6px; padding: 5px 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; flex-shrink: 0; }
+  .share-row { display: flex; gap: 8px; margin-top: 10px; }
+  .share-btn { flex: 1; padding: 9px; border-radius: var(--radius); font-size: 12px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; background: rgba(250,245,231,0.1); border: 0.5px solid rgba(250,245,231,0.2); color: var(--cream); display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+  /* ==================== CLIENT GUIDE SCREEN ==================== */
+  #screen-guide { background: var(--bg); }
+  .guide-wrap { max-width: 500px; margin: 0 auto; }
+  .guide-hero { background: var(--deep); padding: 2rem 1.25rem 1.25rem; position: relative; overflow: hidden; }
+  .guide-hero-bg { position: absolute; inset: 0; background: repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 12px); pointer-events: none; }
+  .guide-location { font-family: 'Playfair Display', serif; font-size: 26px; color: var(--cream); margin-bottom: 3px; position: relative; }
+  .guide-zip { font-size: 11px; color: rgba(250,245,231,0.45); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.25rem; position: relative; }
+  .guide-agent-row { display: flex; align-items: center; gap: 10px; position: relative; border-top: 0.5px solid rgba(250,245,231,0.15); padding-top: 12px; }
+  .guide-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--deep-light); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; color: var(--cream); flex-shrink: 0; border: 1.5px solid rgba(250,245,231,0.2); }
+  .guide-agent-name { font-size: 13px; font-weight: 500; color: var(--cream); margin-bottom: 1px; }
+  .guide-agent-sub { font-size: 11px; color: rgba(250,245,231,0.45); }
+  .guide-call-btn { margin-left: auto; font-size: 12px; color: var(--cream); background: var(--red); padding: 7px 14px; border-radius: 20px; font-weight: 500; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+
+  .guide-updated { display: flex; align-items: center; gap: 7px; padding: 8px 14px; background: var(--bg-secondary); font-size: 11px; color: var(--text-muted); border-bottom: 0.5px solid var(--border); }
+  .guide-updated-dot { width: 6px; height: 6px; border-radius: 50%; background: #3a7d3a; flex-shrink: 0; }
+  .guide-updated-time { margin-left: auto; font-size: 11px; color: var(--text-faint); }
+
+  .guide-cats { display: flex; gap: 6px; padding: 12px 14px; overflow-x: auto; border-bottom: 0.5px solid var(--border); scrollbar-width: none; }
+  .guide-cats::-webkit-scrollbar { display: none; }
+  .guide-cat-btn { font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 0.5px solid var(--border-strong); background: var(--bg); color: var(--text-muted); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .guide-cat-btn.active { background: var(--deep); color: var(--cream); border-color: var(--deep); }
+
+  .guide-content { padding: 14px; }
+  .guide-subcat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+  .guide-subcat-tile { background: var(--bg); border: 0.5px solid var(--border); border-radius: 14px; padding: 14px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+  .guide-subcat-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .guide-subcat-count { font-size: 11px; color: var(--text-faint); }
+
+  .guide-back-btn { display: flex; align-items: center; gap: 5px; background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--text-muted); cursor: pointer; padding: 0; margin-bottom: 14px; }
+
+  .guide-pick-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: 14px; padding: 12px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px; }
+  .guide-pick-badge { width: 38px; height: 38px; border-radius: 10px; background: rgba(57,8,58,0.06); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .guide-pick-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .guide-pick-note { font-size: 11px; color: var(--text-muted); font-style: italic; line-height: 1.4; margin-bottom: 4px; }
+  .guide-pick-stars { font-size: 11px; color: #c07a00; }
+  .guide-pick-meta { font-size: 11px; color: var(--text-faint); }
+  .kurt-tag { background: var(--red); color: #fff; font-size: 9px; font-weight: 500; padding: 2px 7px; border-radius: 8px; margin-left: auto; flex-shrink: 0; align-self: flex-start; white-space: nowrap; }
+
+  .guide-tile-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: 14px; overflow: hidden; border: 0.5px solid var(--border); }
+  .guide-tile { background: var(--bg); padding: 11px 14px; display: flex; align-items: center; gap: 10px; }
+  .guide-tile-emoji { font-size: 18px; width: 30px; text-align: center; flex-shrink: 0; }
+  .guide-tile-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 1px; }
+  .guide-tile-meta { font-size: 11px; color: var(--text-faint); }
+  .guide-tile-stars { font-size: 11px; color: #c07a00; margin-left: auto; }
+
+  .guide-changelog { margin-top: 14px; background: var(--bg-secondary); border-radius: 14px; padding: 12px 14px; }
+  .guide-cl-title { font-size: 11px; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+  .guide-cl-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 0.5px solid var(--border); font-size: 11px; color: var(--text-muted); }
+  .guide-cl-item:last-child { border-bottom: none; }
+  .guide-cl-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .guide-cl-time { margin-left: auto; color: var(--text-faint); white-space: nowrap; font-size: 10px; }
+
+  /* RESPONSIVE */
+  @media (min-width: 600px) {
+    .dash-stats { grid-template-columns: repeat(4, 1fr); }
+    .guide-wrap { border-left: 0.5px solid var(--border); border-right: 0.5px solid var(--border); min-height: 100vh; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ==================== AUTH SCREEN ==================== -->
+<div id="screen-auth" class="screen active">
+  <div class="auth-box">
+    <p class="auth-logo">The Guide<span>.</span></p>
+    <p class="auth-sub">Neighborhood guides for real estate agents</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="setAuthTab('signin')">Sign in</button>
+      <button class="auth-tab" onclick="setAuthTab('signup')">Sign up</button>
+    </div>
+    <div id="auth-signin">
+      <div class="field"><label>Email</label><input type="email" id="signin-email" placeholder="you@brokerage.com" /></div>
+      <div class="field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" /></div>
+      <button class="btn btn-primary btn-full" onclick="signIn()">Sign in</button>
+    </div>
+    <div id="auth-signup" style="display:none;">
+      <div class="field-row">
+        <div class="field"><label>First name</label><input type="text" id="signup-first" placeholder="Kurt" /></div>
+        <div class="field"><label>Last name</label><input type="text" id="signup-last" placeholder="Genkin" /></div>
+      </div>
+      <div class="field"><label>Brokerage</label><input type="text" id="signup-brokerage" placeholder="Ensemble Real Estate" /></div>
+      <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@brokerage.com" /></div>
+      <div class="field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 8 characters" /></div>
+      <button class="btn btn-primary btn-full" onclick="signUp()">Create account</button>
+    </div>
+    <p class="auth-error" id="auth-error"></p>
+  </div>
+</div>
+
+<!-- ==================== DASHBOARD SCREEN ==================== -->
+<div id="screen-dashboard" class="screen">
+  <nav class="nav">
+    <span class="nav-logo" onclick="showScreen('dashboard')">The Guide<span>.</span></span>
+    <div class="nav-right">
+      <div class="nav-agent">
+        <div class="nav-avatar" id="nav-initials">--</div>
+        <span id="nav-name"></span>
+      </div>
+      <button class="nav-signout" onclick="signOut()">Sign out</button>
+    </div>
+  </nav>
+  <div class="dashboard-wrap">
+    <div class="dash-stats">
+      <div class="dash-stat"><div class="dash-stat-val" id="stat-live">0</div><div class="dash-stat-label">Live</div></div>
+      <div class="dash-stat"><div class="dash-stat-val" id="stat-views">0</div><div class="dash-stat-label">Views</div></div>
+      <div class="dash-stat"><div class="dash-stat-val" id="stat-drafts">0</div><div class="dash-stat-label">Drafts</div></div>
+    </div>
+    <div class="dash-toolbar">
+      <div class="dash-filters">
+        <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('live',this)">Live</button>
+        <button class="filter-btn" onclick="setFilter('draft',this)">Drafts</button>
+      </div>
+      <button class="btn btn-red btn-sm" onclick="startNewGuide()">+ New guide</button>
+    </div>
+    <div id="guide-list"></div>
+  </div>
+</div>
+
+<!-- ==================== SETUP SCREEN ==================== -->
+<div id="screen-setup" class="screen">
+  <nav class="nav">
+    <span class="nav-logo" onclick="showScreen('dashboard')">The Guide<span>.</span></span>
+    <div class="nav-right">
+      <button class="nav-signout" onclick="showScreen('dashboard')">← Dashboard</button>
+    </div>
+  </nav>
+  <div class="setup-wrap">
+    <div class="setup-progress" id="setup-progress">
+      <div class="prog-step active" id="prog-1"><div class="prog-num">1</div><span>Zip code</span></div>
+      <div class="prog-line"></div>
+      <div class="prog-step" id="prog-2"><div class="prog-num">2</div><span>Review</span></div>
+      <div class="prog-line"></div>
+      <div class="prog-step" id="prog-3"><div class="prog-num">3</div><span>Your picks</span></div>
+      <div class="prog-line"></div>
+      <div class="prog-step" id="prog-4"><div class="prog-num">4</div><span>Publish</span></div>
+    </div>
+
+    <!-- Step 1: Zip -->
+    <div class="setup-step active card" id="setup-step-1">
+      <p class="section-label">New guide</p>
+      <h2 style="font-family:'Playfair Display',serif;font-weight:400;font-size:22px;margin-bottom:6px;">Where is your client moving?</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1.25rem;">Enter the zip code and we'll find the top-rated local spots automatically.</p>
+      <div class="field"><label>Zip code</label><input type="text" id="zip-input" placeholder="98116" maxlength="5" oninput="this.value=this.value.replace(/\D/g,'')" /></div>
+      <div class="field"><label>Neighborhood name (optional)</label><input type="text" id="hood-input" placeholder="e.g. West Seattle" /></div>
+      <div class="setup-actions">
+        <button class="btn btn-primary" onclick="startZipLookup()">Build guide →</button>
+      </div>
+    </div>
+
+    <!-- Step 1b: Loading -->
+    <div class="setup-step card" id="setup-step-1b">
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <p class="loading-text" id="loading-msg">Looking up your zip code...</p>
+      </div>
+    </div>
+
+    <!-- Step 2: Review -->
+    <div class="setup-step card" id="setup-step-2">
+      <p class="section-label">Step 2 of 4</p>
+      <h2 style="font-family:'Playfair Display',serif;font-weight:400;font-size:20px;margin-bottom:6px;">Review results</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1.25rem;">Remove anything you don't want clients to see.</p>
+      <div id="review-list"></div>
+      <div class="setup-actions">
+        <button class="btn btn-ghost btn-sm" onclick="goSetupStep(1)">Back</button>
+        <button class="btn btn-primary" onclick="goSetupStep(3)">Add my picks →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Picks -->
+    <div class="setup-step card" id="setup-step-3">
+      <p class="section-label">Step 3 of 4</p>
+      <h2 style="font-family:'Playfair Display',serif;font-weight:400;font-size:20px;margin-bottom:6px;">Add your personal picks</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1.25rem;">These show as your personal recommendations on the guide.</p>
+      <div id="picks-list"></div>
+      <div style="border-top:0.5px solid var(--border);padding-top:14px;margin-top:4px;">
+        <div class="field-row">
+          <div class="field"><label>Business name</label><input type="text" id="pick-name" placeholder="e.g. Mike's Plumbing" /></div>
+          <div class="field" style="max-width:140px;"><label>Category</label><input type="text" id="pick-cat" placeholder="Home Services" /></div>
+        </div>
+        <div class="field"><label>Your personal note</label><textarea id="pick-note" rows="2" placeholder="What makes this place special..."></textarea></div>
+        <button class="btn btn-primary btn-sm" onclick="addPick()">+ Add pick</button>
+      </div>
+      <div class="setup-actions">
+        <button class="btn btn-ghost btn-sm" onclick="goSetupStep(2)">Back</button>
+        <button class="btn btn-primary" onclick="saveAndPublish()">Publish guide →</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Published -->
+    <div class="setup-step" id="setup-step-4">
+      <div class="publish-card">
+        <div class="publish-check">✓</div>
+        <p class="publish-title">Your guide is live!</p>
+        <p class="publish-sub" id="publish-sub">Share this link with your client</p>
+        <div class="link-box">
+          <span class="link-text" id="publish-link"></span>
+          <button class="copy-btn" onclick="copyPublishLink()">Copy</button>
+        </div>
+        <div class="share-row">
+          <button class="share-btn" onclick="shareViaText()">💬 Send text</button>
+          <button class="share-btn" onclick="shareViaEmail()">✉️ Send email</button>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <button class="btn btn-ghost" onclick="showScreen('dashboard')">← Back to dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CLIENT GUIDE SCREEN ==================== -->
+<div id="screen-guide" class="screen">
+  <div class="guide-wrap">
+    <div class="guide-hero">
+      <div class="guide-hero-bg"></div>
+      <p class="guide-location" id="guide-location">Welcome</p>
+      <p class="guide-zip" id="guide-zip"></p>
+      <div class="guide-agent-row">
+        <div class="guide-avatar" id="guide-avatar">--</div>
+        <div>
+          <p class="guide-agent-name" id="guide-agent-name"></p>
+          <p class="guide-agent-sub" id="guide-agent-sub"></p>
+        </div>
+        <button class="guide-call-btn" id="guide-call-btn">Contact</button>
+      </div>
+    </div>
+    <div class="guide-updated">
+      <div class="guide-updated-dot"></div>
+      <span id="guide-updated-text">Guide up to date</span>
+      <span class="guide-updated-time" id="guide-updated-time"></span>
+    </div>
+    <div class="guide-cats" id="guide-cats"></div>
+    <div class="guide-content" id="guide-content"></div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="overlay" id="delete-modal">
+  <div class="modal">
+    <p class="modal-title">Delete this guide?</p>
+    <p class="modal-sub" id="delete-modal-sub">This guide will be permanently deleted and cannot be recovered. The client link will stop working immediately.</p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('delete-modal')">Keep it</button>
+      <button class="btn btn-red btn-sm" onclick="confirmDelete()">Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPA_URL = 'https://kcfumuctzrzxyusfwcmx.supabase.co';
+const SUPA_KEY = 'sb_publishable_VXkujxXi0-tqUuPu_g1Pbg_EQIlMikj';
+
+let currentUser = null;
+let currentAgent = null;
+let guides = [];
+let filter = 'all';
+let pendingDeleteId = null;
+let setupData = { zip: '', neighborhood: '', vendors: {}, removed: {}, picks: [], guideId: null };
+let guidePicksSubcat = null;
+
+// ==================== SUPABASE ====================
+async function supa(path, options = {}) {
+  const { headers: h = {}, ...rest } = options;
+  const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    ...rest,
+    cache: 'no-store',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + (currentUser?.access_token || SUPA_KEY),
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+      ...h
+    }
+  });
+  const text = await res.text();
+  try { return text ? JSON.parse(text) : null; } catch { return null; }
+}
+
+async function supaAuth(endpoint, body) {
+  const res = await fetch(SUPA_URL + '/auth/v1/' + endpoint, {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return await res.json();
+}
+
+// ==================== AUTH ====================
+function setAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('auth-signin').style.display = tab === 'signin' ? 'block' : 'none';
+  document.getElementById('auth-signup').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function signIn() {
+  const btn = event.target;
+  const email = document.getElementById('signin-email').value.trim();
+  const password = document.getElementById('signin-password').value;
+  if (!email || !password) { setAuthError('Please fill in all fields.'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    const data = await supaAuth('token?grant_type=password', { email, password });
+    if (data.error) { setAuthError(data.error_description || 'Sign in failed.'); return; }
+    currentUser = data;
+    localStorage.setItem('tg_session', JSON.stringify(data));
+    await loadAgent();
+    showScreen('dashboard');
+    await loadGuides();
+  } catch(e) {
+    setAuthError('Something went wrong. Try again.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign in';
+  }
+}
+
+async function signUp() {
+  const btn = event.target;
+  const first = document.getElementById('signup-first').value.trim();
+  const last = document.getElementById('signup-last').value.trim();
+  const brokerage = document.getElementById('signup-brokerage').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  if (!first || !email || !password) { setAuthError('Please fill in all required fields.'); return; }
+  if (password.length < 8) { setAuthError('Password must be at least 8 characters.'); return; }
+  btn.disabled = true; btn.textContent = 'Creating account...';
+  try {
+    const data = await supaAuth('signup', { email, password });
+    if (data.error) { setAuthError(data.error_description || 'Sign up failed.'); return; }
+    if (!data.access_token) { setAuthError('Check your email to confirm your account, then sign in.'); return; }
+    currentUser = data;
+    localStorage.setItem('tg_session', JSON.stringify(data));
+    await supa('agents', {
+      method: 'POST',
+      body: JSON.stringify({ id: data.user.id, name: first + ' ' + last, brokerage, email })
+    });
+    await loadAgent();
+    showScreen('dashboard');
+    await loadGuides();
+  } catch(e) {
+    setAuthError('Something went wrong. Try again.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create account';
+  }
+}
+
+function signOut() {
+  currentUser = null; currentAgent = null; guides = [];
+  localStorage.removeItem('tg_session');
+  showScreen('auth');
+}
+
+function setAuthError(msg) {
+  document.getElementById('auth-error').textContent = msg;
+}
+
+async function loadAgent() {
+  if (!currentUser) return;
+  const data = await supa('agents?id=eq.' + currentUser.user.id + '&select=*');
+  if (data && data[0]) {
+    currentAgent = data[0];
+    const initials = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    document.getElementById('nav-initials').textContent = initials;
+    document.getElementById('nav-name').textContent = currentAgent.name;
+  }
+}
+
+// ==================== GUIDES ====================
+async function loadGuides() {
+  if (!currentUser) return;
+  const data = await supa('guides?agent_id=eq.' + currentUser.user.id + '&order=created_at.desc&select=*');
+  guides = data || [];
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const live = guides.filter(g => g.status === 'live');
+  const drafts = guides.filter(g => g.status === 'draft');
+  document.getElementById('stat-live').textContent = live.length;
+  document.getElementById('stat-drafts').textContent = drafts.length;
+  document.getElementById('stat-views').textContent = guides.reduce((a,g) => a + (g.views||0), 0);
+
+  const filtered = filter === 'all' ? guides : guides.filter(g => g.status === filter);
+  const el = document.getElementById('guide-list');
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state">No guides yet — create your first one!</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(g => `
+    <div class="guide-card">
+      <div class="guide-icon">${g.emoji || '📍'}</div>
+      <div class="guide-info">
+        <div class="guide-name">${g.neighborhood || g.zip} <span class="pill pill-${g.status}">${g.status}</span></div>
+        <div class="guide-meta">${g.zip} · updated ${timeAgo(g.updated_at)}</div>
+      </div>
+      <div class="guide-views"><strong>${g.views||0}</strong> views</div>
+      <div class="guide-actions">
+        <button class="btn btn-ghost btn-sm" onclick="copyGuideLink('${g.id}','${g.slug||g.id}',this)">Copy link</button>
+        <button class="btn btn-ghost btn-sm" onclick="previewGuide('${g.id}')">View</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="askDelete('${g.id}','${g.neighborhood||g.zip}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+function setFilter(f, btn) {
+  filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDashboard();
+}
+
+function copyGuideLink(id, slug, btn) {
+  const link = window.location.href.split('?')[0] + '?guide=' + (slug || id);
+  navigator.clipboard.writeText(link).catch(()=>{});
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy link', 2000);
+}
+
+function askDelete(id, name) {
+  pendingDeleteId = id;
+  document.getElementById('delete-modal-sub').textContent = '"' + name + '" will be permanently deleted and cannot be recovered. The client link will stop working immediately.';
+  openModal('delete-modal');
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteId) return;
+  await supa('guides?id=eq.' + pendingDeleteId, { method: 'DELETE' });
+  closeModal('delete-modal');
+  showToast('Guide deleted');
+  await loadGuides();
+}
+
+// ==================== SETUP ====================
+function startNewGuide() {
+  setupData = { zip: '', neighborhood: '', vendors: {}, removed: {}, picks: [], guideId: null };
+  goSetupStep(1);
+  showScreen('setup');
+}
+
+function goSetupStep(n) {
+  document.querySelectorAll('.setup-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('setup-step-' + n).classList.add('active');
+  ['prog-1','prog-2','prog-3','prog-4'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active','done');
+    if (i + 1 < n) el.classList.add('done');
+    else if (i + 1 === n) el.classList.add('active');
+  });
+}
+
+async function startZipLookup() {
+  const zip = document.getElementById('zip-input').value.trim();
+  const hood = document.getElementById('hood-input').value.trim();
+  if (zip.length < 5) { document.getElementById('zip-input').focus(); return; }
+  setupData.zip = zip;
+  setupData.neighborhood = hood || zip;
+  goSetupStep('1b');
+  document.querySelectorAll('.setup-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('setup-step-1b').classList.add('active');
+
+  const msgs = ['Looking up ' + (hood||zip) + '...', 'Fetching top restaurants...', 'Pulling home services & healthcare...', 'Sorting by review score...', 'Almost ready...'];
+  let i = 0;
+  const iv = setInterval(() => {
+    if (i < msgs.length) document.getElementById('loading-msg').textContent = msgs[i++];
+    else { clearInterval(iv); buildMockVendors(); goSetupStep(2); renderReview(); }
+  }, 600);
+}
+
+function buildMockVendors() {
+  // In production this calls Google Places API with setupData.zip
+  // For now we use smart mock data based on zip
+  const zips = {
+    '98116': { name: 'West Seattle', data: {
+      'Restaurants': [{name:"Salty's on Alki",r:4.7},{name:"Bakery Nouveau",r:4.8},{name:"Easy Street Café",r:4.6},{name:"Circa",r:4.5}],
+      'Coffee': [{name:"Hotwire Coffee",r:4.7},{name:"Caffe Ladro",r:4.5},{name:"Lighthouse Coffee",r:4.6}],
+      'Home Services': [{name:"Westside Plumbing",r:4.9},{name:"West Seattle Electric",r:4.7},{name:"Puget Sound HVAC",r:4.6}],
+      'Healthcare': [{name:"Fauntleroy Urgent Care",r:4.5},{name:"West Seattle Dental",r:4.8},{name:"Bartell Drugs",r:4.4}],
+      'Parks': [{name:"Alki Beach Park",r:4.9},{name:"Lincoln Park",r:4.8},{name:"Camp Long",r:4.6}],
+    }},
+    '98102': { name: 'Capitol Hill', data: {
+      'Restaurants': [{name:"Altura",r:4.8},{name:"Tavolàta",r:4.6},{name:"Poppy",r:4.7},{name:"Stateside",r:4.5}],
+      'Coffee': [{name:"Analog Coffee",r:4.8},{name:"Victrola Coffee",r:4.7},{name:"Caffé Vita",r:4.6}],
+      'Home Services': [{name:"Capitol Hill Plumbing",r:4.7},{name:"Seattle Electric Co.",r:4.6},{name:"Urban HVAC",r:4.5}],
+      'Healthcare': [{name:"Swedish Medical Center",r:4.5},{name:"Capitol Hill Dental",r:4.7},{name:"Rite Aid Pharmacy",r:4.2}],
+      'Parks': [{name:"Volunteer Park",r:4.9},{name:"Cal Anderson Park",r:4.7},{name:"Interlaken Park",r:4.6}],
+    }},
+    '98107': { name: 'Ballard', data: {
+      'Restaurants': [{name:"The Walrus and the Carpenter",r:4.8},{name:"Stoneburner",r:4.6},{name:"Bastille Café",r:4.7},{name:"Chan Seattle",r:4.5}],
+      'Coffee': [{name:"Lighthouse Coffee",r:4.8},{name:"Ballard Coffee Works",r:4.6},{name:"Herkimer Coffee",r:4.7}],
+      'Home Services': [{name:"Ballard Plumbing",r:4.8},{name:"NW Electric",r:4.6},{name:"Sound HVAC",r:4.5}],
+      'Healthcare': [{name:"Swedish Ballard",r:4.6},{name:"Ballard Dental",r:4.8},{name:"Bartell Drugs Ballard",r:4.4}],
+      'Parks': [{name:"Golden Gardens Park",r:4.9},{name:"Ballard Commons",r:4.6},{name:"Salmon Bay Park",r:4.5}],
+    }},
+    '98103': { name: 'Fremont', data: {
+      'Restaurants': [{name:"Revel",r:4.7},{name:"Paseo Caribbean",r:4.8},{name:"Uneeda Burger",r:4.5},{name:"The Whale Wins",r:4.6}],
+      'Coffee': [{name:"Milstead & Co.",r:4.8},{name:"Fremont Coffee Co.",r:4.7},{name:"Lighthouse Coffee",r:4.6}],
+      'Home Services': [{name:"Fremont Plumbing",r:4.8},{name:"North Seattle Electric",r:4.6},{name:"Cascade HVAC",r:4.5}],
+      'Healthcare': [{name:"Fremont Urgent Care",r:4.4},{name:"Aurora Family Dentistry",r:4.7},{name:"Bartell Drugs Fremont",r:4.3}],
+      'Parks': [{name:"Gas Works Park",r:4.9},{name:"Fremont Canal Park",r:4.6},{name:"Woodland Park",r:4.8}],
+    }},
+  };
+  const zip = setupData.zip;
+  const match = zips[zip] || { name: setupData.neighborhood || zip, data: {
+    'Restaurants': [{name:"Local Restaurant",r:4.5},{name:"Corner Bistro",r:4.4},{name:"Main Street Café",r:4.3}],
+    'Coffee': [{name:"Local Coffee",r:4.6},{name:"Corner Café",r:4.5}],
+    'Home Services': [{name:"Local Plumbing",r:4.7},{name:"Local Electric",r:4.5}],
+    'Healthcare': [{name:"Local Urgent Care",r:4.4},{name:"Local Dental",r:4.6}],
+    'Parks': [{name:"Local Park",r:4.7},{name:"Community Park",r:4.5}],
+  }};
+  if (!setupData.neighborhood || setupData.neighborhood === zip) setupData.neighborhood = match.name;
+  setupData.vendors = match.data;
+}
+
+function renderReview() {
+  let html = '';
+  Object.entries(setupData.vendors).forEach(([cat, vendors]) => {
+    const showing = vendors.filter((_,i) => !setupData.removed[cat+'_'+i]).length;
+    html += `<div class="review-cat">
+      <p class="review-cat-title"><span>${cat}</span><span style="font-size:11px;color:var(--text-faint);">${showing} showing</span></p>`;
+    vendors.forEach((v, i) => {
+      const rem = setupData.removed[cat+'_'+i];
+      html += `<div class="review-row">
+        <span class="review-name${rem?' removed':''}">${v.name}</span>
+        <span class="review-rating${rem?' removed':''}">${stars(v.r)}</span>
+        <button class="remove-btn" onclick="toggleRemove('${cat}',${i})">${rem ? '+' : '×'}</button>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  document.getElementById('review-list').innerHTML = html;
+}
+
+function toggleRemove(cat, idx) {
+  const key = cat + '_' + idx;
+  setupData.removed[key] = !setupData.removed[key];
+  renderReview();
+}
+
+function renderPicks() {
+  const el = document.getElementById('picks-list');
+  if (!setupData.picks.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text-faint);font-style:italic;margin-bottom:14px;">No picks yet — add your first one below.</p>';
+    return;
+  }
+  el.innerHTML = setupData.picks.map((p, i) => `
+    <div class="pick-item">
+      <div class="pick-icon" style="font-size:14px;color:var(--cream);">⭐</div>
+      <div style="flex:1;min-width:0;">
+        <p class="pick-name">${p.name} <span style="font-size:11px;font-weight:400;color:var(--text-faint);">· ${p.cat}</span></p>
+        ${p.note ? `<p class="pick-note">"${p.note}"</p>` : ''}
+      </div>
+      <button class="pick-remove" onclick="removePick(${i})">×</button>
+    </div>`).join('');
+}
+
+function addPick() {
+  const name = document.getElementById('pick-name').value.trim();
+  const cat = document.getElementById('pick-cat').value.trim();
+  const note = document.getElementById('pick-note').value.trim();
+  if (!name) { document.getElementById('pick-name').focus(); return; }
+  setupData.picks.push({ name, cat: cat || 'General', note });
+  document.getElementById('pick-name').value = '';
+  document.getElementById('pick-cat').value = '';
+  document.getElementById('pick-note').value = '';
+  renderPicks();
+}
+
+function removePick(i) { setupData.picks.splice(i, 1); renderPicks(); }
+
+async function saveAndPublish() {
+  if (!currentUser) return;
+  const slug = currentAgent.name.toLowerCase().replace(/\s+/g,'-') + '-' + setupData.neighborhood.toLowerCase().replace(/\s+/g,'-') + '-' + setupData.zip;
+
+  // Save guide
+  const guideRes = await supa('guides', {
+    method: 'POST',
+    body: JSON.stringify({
+      agent_id: currentUser.user.id,
+      neighborhood: setupData.neighborhood,
+      zip: setupData.zip,
+      emoji: '📍',
+      status: 'live',
+      slug,
+    })
+  });
+
+  if (!guideRes || !guideRes[0]) { showToast('Error saving guide'); return; }
+  const guideId = guideRes[0].id;
+  setupData.guideId = guideId;
+
+  // Save categories + vendors
+  for (const [cat, vendors] of Object.entries(setupData.vendors)) {
+    const catRes = await supa('categories', {
+      method: 'POST',
+      body: JSON.stringify({ guide_id: guideId, name: cat, is_base: true })
+    });
+    if (!catRes || !catRes[0]) continue;
+    const catId = catRes[0].id;
+    for (let i = 0; i < vendors.length; i++) {
+      if (setupData.removed[cat+'_'+i]) continue;
+      await supa('vendors', {
+        method: 'POST',
+        body: JSON.stringify({ category_id: catId, name: vendors[i].name, rating: vendors[i].r })
+      });
+    }
+  }
+
+  // Save agent picks
+  if (setupData.picks.length) {
+    const picksRes = await supa('categories', {
+      method: 'POST',
+      body: JSON.stringify({ guide_id: guideId, name: "Agent's Picks", is_base: false })
+    });
+    if (picksRes && picksRes[0]) {
+      const picksCatId = picksRes[0].id;
+      for (const p of setupData.picks) {
+        await supa('vendors', {
+          method: 'POST',
+          body: JSON.stringify({ category_id: picksCatId, name: p.name, is_agent_pick: true, agent_note: p.note })
+        });
+      }
+    }
+  }
+
+  const link = window.location.href.split('?')[0] + '?guide=' + slug;
+  document.getElementById('publish-link').textContent = link;
+  document.getElementById('publish-sub').textContent = setupData.neighborhood + ' · ' + setupData.zip;
+  goSetupStep(4);
+  await loadGuides();
+}
+
+function copyPublishLink() {
+  const link = document.getElementById('publish-link').textContent;
+  navigator.clipboard.writeText(link).catch(()=>{});
+  showToast('Link copied!');
+}
+
+function shareViaText() {
+  const link = document.getElementById('publish-link').textContent;
+  window.open('sms:?body=' + encodeURIComponent("Hi! Check out your " + setupData.neighborhood + " neighborhood guide: " + link));
+}
+
+function shareViaEmail() {
+  const link = document.getElementById('publish-link').textContent;
+  window.open('mailto:?subject=' + encodeURIComponent("Your " + setupData.neighborhood + " neighborhood guide") + '&body=' + encodeURIComponent("Hi!\n\nI put together a personalized neighborhood guide for " + setupData.neighborhood + " just for you.\n\nCheck it out here: " + link + "\n\nI'll keep it updated, so bookmark it and check back anytime.\n\n" + (currentAgent?.name || '')));
+}
+
+// ==================== CLIENT GUIDE ====================
+async function previewGuide(guideId) {
+  const guide = guides.find(g => g.id === guideId);
+  if (!guide) return;
+  await renderClientGuide(guide);
+  showScreen('guide');
+  // Log view
+  await supa('guide_views', { method: 'POST', body: JSON.stringify({ guide_id: guideId }) });
+}
+
+async function loadGuideBySlug(slug) {
+  const data = await supa('guides?slug=eq.' + slug + '&status=eq.live&select=*');
+  if (!data || !data[0]) { document.body.innerHTML = '<div style="text-align:center;padding:3rem;font-family:DM Sans,sans-serif;"><h2>Guide not found</h2><p>This guide may have been removed.</p></div>'; return; }
+  await renderClientGuide(data[0]);
+  showScreen('guide');
+  await supa('guide_views', { method: 'POST', body: JSON.stringify({ guide_id: data[0].id }) });
+}
+
+async function renderClientGuide(guide) {
+  // Load agent
+  const agentData = await supa('agents?id=eq.' + guide.agent_id + '&select=*');
+  const agent = agentData && agentData[0] ? agentData[0] : { name: 'Your Agent', brokerage: '' };
+  const initials = agent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+
+  document.getElementById('guide-location').textContent = 'Welcome to ' + (guide.neighborhood || guide.zip);
+  document.getElementById('guide-zip').textContent = guide.zip + ' · ' + (guide.neighborhood || '') + ' · Your personalized local guide';
+  document.getElementById('guide-avatar').textContent = initials;
+  document.getElementById('guide-agent-name').textContent = agent.name;
+  document.getElementById('guide-agent-sub').textContent = (agent.brokerage || '') + ' · Your agent';
+  document.getElementById('guide-updated-time').textContent = 'Updated ' + timeAgo(guide.updated_at);
+  if (agent.phone) document.getElementById('guide-call-btn').onclick = () => window.open('tel:' + agent.phone);
+
+  // Load categories + vendors
+  const cats = await supa('categories?guide_id=eq.' + guide.id + '&order=is_base.desc,sort_order.asc&select=*');
+  if (!cats || !cats.length) return;
+
+  const catData = {};
+  for (const cat of cats) {
+    const vendors = await supa('vendors?category_id=eq.' + cat.id + '&order=sort_order.asc,rating.desc&select=*');
+    catData[cat.name] = { vendors: vendors || [], isBase: cat.is_base, isPicks: cat.name.includes("Pick") };
+  }
+
+  let activeCat = Object.keys(catData)[0];
+  let picksSubcat = null;
+
+  function renderCats() {
+    document.getElementById('guide-cats').innerHTML = Object.keys(catData).map(c =>
+      `<button class="guide-cat-btn${c === activeCat ? ' active' : ''}" onclick="guideCatClick('${c}')">${c}</button>`
+    ).join('');
+    renderCatContent();
+  }
+
+  window.guideCatClick = function(cat) { activeCat = cat; picksSubcat = null; renderCats(); };
+  window.guidePicksSubcat = function(sub) { picksSubcat = sub; renderCatContent(); };
+  window.guidePicksBack = function() { picksSubcat = null; renderCatContent(); };
+
+  function renderCatContent() {
+    const cat = catData[activeCat];
+    let html = '';
+    if (cat.isPicks) {
+      if (picksSubcat === null) {
+        const subcats = {};
+        cat.vendors.forEach(v => {
+          const key = v.agent_note ? (v.name.split(' ').length > 1 ? 'General' : 'General') : 'General';
+          const c = 'All Picks';
+          if (!subcats[c]) subcats[c] = [];
+          subcats[c].push(v);
+        });
+        // Group picks by category field if available, else show all
+        html += `<p class="section-label">Personally recommended by ${agent.name.split(' ')[0]}</p>`;
+        cat.vendors.forEach(v => {
+          html += `<div class="guide-pick-card">
+            <div class="guide-pick-badge">⭐</div>
+            <div style="flex:1;min-width:0;">
+              <p class="guide-pick-name">${v.name}</p>
+              ${v.agent_note ? `<p class="guide-pick-note">"${v.agent_note}"</p>` : ''}
+              ${v.rating ? `<p class="guide-pick-stars">${stars(v.rating)} <span style="color:var(--text-faint);">· ${v.rating} on Google</span></p>` : ''}
+            </div>
+            <span class="kurt-tag">${agent.name.split(' ')[0]}'s pick</span>
+          </div>`;
+        });
+      }
+    } else {
+      html += `<p class="section-label">Top rated in ${activeCat.toLowerCase()}</p>`;
+      html += `<div class="guide-tile-list">`;
+      cat.vendors.forEach(v => {
+        html += `<div class="guide-tile">
+          <span class="guide-tile-emoji">📍</span>
+          <div style="flex:1;min-width:0;">
+            <p class="guide-tile-name">${v.name}</p>
+            ${v.address ? `<p class="guide-tile-meta">${v.address}</p>` : ''}
+          </div>
+          ${v.rating ? `<span class="guide-tile-stars">${stars(v.rating)}</span>` : ''}
+        </div>`;
+      });
+      html += `</div>`;
+    }
+    html += `<div class="guide-changelog">
+      <p class="guide-cl-title">📋 Recent updates</p>
+      <div class="guide-cl-item"><div class="guide-cl-dot" style="background:#3a7d3a;"></div><span>Guide published</span><span class="guide-cl-time">${timeAgo(guide.created_at)}</span></div>
+    </div>`;
+    document.getElementById('guide-content').innerHTML = html;
+  }
+
+  renderCats();
+}
+
+// ==================== UTILS ====================
+function stars(n) {
+  if (!n) return '';
+  return '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n));
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = (Date.now() - new Date(ts)) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// ==================== INIT ====================
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(window.location.search);
+  const slug = params.get('guide');
+  if (slug) { loadGuideBySlug(slug); return; }
+
+  // Check for existing session
+  const savedSession = localStorage.getItem('tg_session');
+  if (savedSession) {
+    try {
+      currentUser = JSON.parse(savedSession);
+      loadAgent().then(() => { showScreen('dashboard'); loadGuides(); });
+    } catch { showScreen('auth'); }
+  } else {
+    showScreen('auth');
+  }
+});
+
+
+</script>
+</body>
+</html>
