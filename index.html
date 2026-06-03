@@ -382,7 +382,7 @@ async function doSignIn() {
     localStorage.setItem('tg_session', JSON.stringify(currentUser));
     try { await loadAgent(); } catch(e) { console.error('loadAgent failed:', e); }
     showScreen('dashboard');
-    loadGuides();
+    try { await loadGuides(); } catch(e) { console.error('loadGuides failed:', e); }
   } catch(e) {
     setAuthError('Something went wrong. Try again.');
     console.error(e);
@@ -438,7 +438,9 @@ function doSignOut() {
 
 async function loadAgent() {
   if (!currentUser) return;
+  console.log('loadAgent: fetching for', currentUser.user.id);
   const data = await dbFetch('agents?id=eq.' + currentUser.user.id + '&select=*');
+  console.log('loadAgent result:', data);
   if (data && data[0]) {
     currentAgent = data[0];
     const initials = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
@@ -449,7 +451,9 @@ async function loadAgent() {
 
 async function loadGuides() {
   if (!currentUser) return;
+  console.log('loadGuides: fetching for', currentUser.user.id);
   const data = await dbFetch('guides?agent_id=eq.' + currentUser.user.id + '&order=created_at.desc&select=*');
+  console.log('loadGuides result:', data);
   guides = data || [];
   renderDashboard();
 }
