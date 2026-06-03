@@ -51,7 +51,8 @@ input:focus, textarea:focus { border-color: var(--deep); }
 .modal-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 400; margin-bottom: 6px; }
 .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.6; }
 .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
-#screen-auth { background: var(--deep); display: flex; align-items: center; justify-content: center; }
+#screen-auth { background: var(--deep); }
+#screen-auth.active { display: flex; align-items: center; justify-content: center; }
 .auth-box { background: var(--bg); border-radius: var(--radius-lg); padding: 2rem; width: 100%; max-width: 380px; margin: 20px; }
 .auth-logo { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--deep); font-weight: 400; text-align: center; margin-bottom: 6px; }
 .auth-logo span { color: var(--red); }
@@ -742,6 +743,7 @@ window.addEventListener('load', function() {
   const params = new URLSearchParams(window.location.search);
   const slug = params.get('guide');
   if (slug) { loadGuideBySlug(slug); return; }
+  if (currentUser) return; // already signed in via button click
   const saved = localStorage.getItem('tg_session');
   if (saved) {
     try {
