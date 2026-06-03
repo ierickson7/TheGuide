@@ -377,9 +377,10 @@ async function doSignIn() {
       setAuthError(error.message);
       return;
     }
+    console.log('Sign in success, user:', data.user.id);
     currentUser = { access_token: data.session.access_token, user: data.user };
     localStorage.setItem('tg_session', JSON.stringify(currentUser));
-    await loadAgent();
+    try { await loadAgent(); } catch(e) { console.error('loadAgent failed:', e); }
     showScreen('dashboard');
     loadGuides();
   } catch(e) {
@@ -417,7 +418,7 @@ async function doSignUp() {
       method: 'POST',
       body: JSON.stringify({ id: data.user.id, name: (first + ' ' + last).trim(), brokerage, email })
     });
-    await loadAgent();
+    await loadAgent().catch(e => console.error('loadAgent failed:', e));
     showScreen('dashboard');
     loadGuides();
   } catch(e) {
