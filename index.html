@@ -448,10 +448,14 @@ let setupData = { zip: '', neighborhood: '', vendors: {}, removed: {}, picks: []
 let guidePicksSubcat = null;
 
 // ==================== SUPABASE ====================
-let supabase;
+let supabase = null;
 
-function initSupabase() {
-  supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+function getSupabase() {
+  if (!supabase) {
+    if (!window.supabase) { console.error('Supabase JS not loaded'); return null; }
+    supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  }
+  return supabase;
 }
 
 async function supa(path, options = {}) {
@@ -487,7 +491,9 @@ async function signIn(btn) {
   if (!email || !password) { setAuthError('Please fill in all fields.'); return; }
   btn.disabled = true; btn.textContent = 'Signing in...';
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const sb = getSupabase();
+    if (!sb) { setAuthError('App not loaded yet, please refresh.'); return; }
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) { setAuthError(error.message); return; }
     currentUser = { access_token: data.session.access_token, user: data.user };
     localStorage.setItem('tg_session', JSON.stringify(currentUser));
@@ -512,7 +518,9 @@ async function signUp(btn) {
   if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return; }
   btn.disabled = true; btn.textContent = 'Creating account...';
   try {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const sb = getSupabase();
+    if (!sb) { setAuthError('App not loaded yet, please refresh.'); return; }
+    const { data, error } = await sb.auth.signUp({ email, password });
     console.log('signup result:', data, error);
     if (error) { setAuthError(error.message); return; }
     if (!data.session) { setAuthError('Check your email to confirm your account, then sign in.'); return; }
@@ -534,7 +542,8 @@ async function signUp(btn) {
 }
 
 function signOut() {
-  supabase.auth.signOut();
+  const sb = getSupabase();
+  if (sb) sb.auth.signOut();
   currentUser = null; currentAgent = null; guides = [];
   localStorage.removeItem('tg_session');
   showScreen('auth');
@@ -976,7 +985,6 @@ function showToast(msg) {
 
 // ==================== INIT ====================
 window.addEventListener('load', () => {
-  initSupabase();
   const params = new URLSearchParams(window.location.search);
   const slug = params.get('guide');
   if (slug) { loadGuideBySlug(slug); return; }
