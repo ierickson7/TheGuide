@@ -164,8 +164,8 @@ input:focus, textarea:focus { border-color: var(--deep); }
       <button class="auth-tab" id="tab-signup" onclick="showAuthTab('signup')">Sign up</button>
     </div>
     <div id="auth-signin">
-      <div class="field"><label>Email</label><input type="email" id="signin-email" placeholder="you@brokerage.com" /></div>
-      <div class="field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" /></div>
+      <div class="field"><label>Email</label><input type="email" id="signin-email" placeholder="you@brokerage.com" onkeydown="if(event.key==='Enter')doSignIn()" /></div>
+      <div class="field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doSignIn()" /></div>
       <button class="btn btn-primary btn-full" id="signin-btn" onclick="doSignIn()">Sign in</button>
     </div>
     <div id="auth-signup" style="display:none;">
@@ -175,7 +175,7 @@ input:focus, textarea:focus { border-color: var(--deep); }
       </div>
       <div class="field"><label>Brokerage</label><input type="text" id="signup-brokerage" placeholder="Ensemble Real Estate" /></div>
       <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@brokerage.com" /></div>
-      <div class="field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 6 characters" /></div>
+      <div class="field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 6 characters" onkeydown="if(event.key==='Enter')doSignUp()" /></div>
       <button class="btn btn-primary btn-full" id="signup-btn" onclick="doSignUp()">Create account</button>
     </div>
     <p class="auth-error" id="auth-error"></p>
