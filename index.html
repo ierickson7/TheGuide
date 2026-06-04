@@ -579,7 +579,9 @@ function startZipLookup() {
 
   // Use real Google Places API
   const searchLocation = setupData.address || setupData.zip;
+  console.log('Fetching places for:', searchLocation);
   fetchPlacesForLocation(searchLocation).then(vendors => {
+    console.log('Places returned:', vendors);
     clearInterval(iv);
     setupData.vendors = vendors;
     if (!setupData.neighborhood) setupData.neighborhood = hood || input;
