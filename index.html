@@ -48,6 +48,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg-secondary); colo
 .btn-full { width: 100%; justify-content: center; }
 input, textarea, select { font-family: 'DM Sans', sans-serif; font-size: 14px; width: 100%; padding: 10px 14px; border: 0.5px solid var(--border-strong); border-radius: var(--radius); background: var(--bg); color: var(--text); outline: none; }
 input:focus, textarea:focus { border-color: var(--deep); }
+gmp-place-autocomplete { width: 100%; display: block; }
+gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; font-size: 14px !important; width: 100% !important; padding: 10px 14px !important; border: 0.5px solid var(--border-strong) !important; border-radius: var(--radius) !important; background: var(--bg) !important; color: var(--text) !important; outline: none !important; box-sizing: border-box !important; height: auto !important; margin: 0 !important; }
 .field { margin-bottom: 14px; }
 .field label { font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.06em; }
 .field-row { display: flex; gap: 10px; }
@@ -566,19 +568,28 @@ function goSetupStep(n) {
 }
 
 function startZipLookup() {
-  const input = document.getElementById('zip-input').value.trim();
-  const hood = document.getElementById('hood-input').value.trim();
-  if (!input) { document.getElementById('zip-input').focus(); return; }
+  // Get value from either the autocomplete element or the original input
+  const autocompleteEl = document.getElementById('zip-autocomplete');
+  const originalInput = document.getElementById('zip-input');
+  const input = autocompleteEl || originalInput;
+  const value = input ? (input.value || input.getAttribute('value') || '') : '';
+  const hood = document.getElementById('hood-input') ? document.getElementById('hood-input').value.trim() : '';
 
-  const isZip = /^\d{5}$/.test(input);
-  setupData.zip = isZip ? input : '';
-  setupData.address = isZip ? '' : input;
-  setupData.neighborhood = hood || '';
+  // Also try reading from the inner input inside the autocomplete element
+  const innerInput = autocompleteEl ? autocompleteEl.querySelector('input') : null;
+  const finalValue = (innerInput ? innerInput.value : value).trim();
+
+  if (!finalValue) { if (input) input.focus(); return; }
+
+  const isZip = /^\d{5}$/.test(finalValue);
+  setupData.zip = isZip ? finalValue : (setupData.zip || '');
+  setupData.address = isZip ? '' : finalValue;
+  setupData.neighborhood = hood || setupData.neighborhood || '';
 
   document.querySelectorAll('.setup-step').forEach(s => s.classList.remove('active'));
   document.getElementById('setup-step-1b').classList.add('active');
 
-  const label = hood || input;
+  const label = hood || finalValue;
   const msgs = [
     'Looking up ' + label + '...',
     'Fetching top restaurants...',
@@ -591,7 +602,6 @@ function startZipLookup() {
     if (i < msgs.length) document.getElementById('loading-msg').textContent = msgs[i++];
   }, 700);
 
-  // Use real Google Places API
   const searchLocation = setupData.address || setupData.zip;
   console.log('Fetching places for:', searchLocation);
   fetchPlacesForLocation(searchLocation).then(vendors => {
@@ -600,7 +610,7 @@ function startZipLookup() {
     console.log('First category:', Object.values(vendors)[0]);
     clearInterval(iv);
     setupData.vendors = vendors;
-    if (!setupData.neighborhood) setupData.neighborhood = hood || input;
+    if (!setupData.neighborhood) setupData.neighborhood = hood || finalValue;
     goSetupStep(2);
     renderReview();
   }).catch(e => {
