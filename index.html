@@ -672,7 +672,21 @@ async function loadGuideBySlug(slug) {
       'Prefer': 'return=minimal'
     },
     body: JSON.stringify({ guide_id: data[0].id })
-  }).then(r => console.log('view logged:', r.status)).catch(e => console.error('view log failed:', e));
+  }).then(r => {
+    console.log('view logged:', r.status);
+    // Also increment views column directly
+    return fetch(SUPA_URL + '/rest/v1/guides?id=eq.' + data[0].id, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ views: (data[0].views || 0) + 1 })
+    });
+  }).then(r => console.log('views incremented:', r.status))
+    .catch(e => console.error('view log failed:', e));
 }
 
 async function renderClientGuide(guide, isAgent) {
