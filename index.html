@@ -322,6 +322,40 @@ input:focus, textarea:focus { border-color: var(--deep); }
 <script>
 const SUPA_URL = 'https://kcfumuctzrzxyusfwcmx.supabase.co';
 const SUPA_KEY = 'sb_publishable_VXkujxXi0-tqUuPu_g1Pbg_EQIlMikj';
+const MAPS_KEY = 'AIzaSyDNLAP2ZD_12SEp4Cbh_d_l9osU5yqP6jA';
+
+const PLACE_CATEGORIES = [
+  { name: 'Restaurants', type: 'restaurant', emoji: '🍽️' },
+  { name: 'Coffee', type: 'cafe', emoji: '☕' },
+  { name: 'Home Services', type: 'plumber', emoji: '🔧' },
+  { name: 'Healthcare', type: 'hospital', emoji: '🏥' },
+  { name: 'Parks', type: 'park', emoji: '🌿' },
+];
+
+async function fetchPlacesForLocation(query) {
+  // Use Places Text Search via our proxy-safe approach
+  const results = {};
+  for (const cat of PLACE_CATEGORIES) {
+    const searchQuery = cat.type + ' near ' + query;
+    const url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?query=' + encodeURIComponent(searchQuery) + '&key=' + MAPS_KEY;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.results) {
+        results[cat.name] = data.results.slice(0, 5).map(p => ({
+          name: p.name,
+          r: p.rating || null,
+          address: p.formatted_address,
+          place_id: p.place_id
+        }));
+      }
+    } catch(e) {
+      console.error('Places fetch failed for', cat.name, e);
+      results[cat.name] = [];
+    }
+  }
+  return results;
+}
 
 let sb = null;
 let currentUser = null;
@@ -553,8 +587,23 @@ function startZipLookup() {
   let i = 0;
   const iv = setInterval(() => {
     if (i < msgs.length) document.getElementById('loading-msg').textContent = msgs[i++];
-    else { clearInterval(iv); buildVendors(); goSetupStep(2); renderReview(); }
-  }, 600);
+  }, 700);
+
+  // Use real Google Places API
+  const searchLocation = setupData.address || setupData.zip;
+  fetchPlacesForLocation(searchLocation).then(vendors => {
+    clearInterval(iv);
+    setupData.vendors = vendors;
+    if (!setupData.neighborhood) setupData.neighborhood = hood || input;
+    goSetupStep(2);
+    renderReview();
+  }).catch(e => {
+    clearInterval(iv);
+    console.error('Places API failed, using fallback:', e);
+    buildVendors();
+    goSetupStep(2);
+    renderReview();
+  });
 }
 
 function buildVendors() {
@@ -658,7 +707,7 @@ async function saveAndPublish() {
     const catId = catRes[0].id;
     for (let i = 0; i < vendors.length; i++) {
       if (setupData.removed[cat+'_'+i]) continue;
-      await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: catId, name: vendors[i].name, rating: vendors[i].r }) });
+      await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: catId, name: vendors[i].name, rating: vendors[i].r, address: vendors[i].address || null }) });
     }
   }
   if (setupData.picks.length) {
@@ -773,7 +822,7 @@ async function renderClientGuide(guide, isAgent) {
     if (cat.isPicks) {
       html += `<p class="section-label">Personally recommended by ${agent.name.split(' ')[0]}</p>`;
       cat.vendors.forEach(v => {
-        const mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(v.name + ' ' + (guide.neighborhood||guide.zip));
+        const mapsUrl = v.place_id ? 'https://www.google.com/maps/place/?q=place_id:' + v.place_id : 'https://maps.google.com/?q=' + encodeURIComponent(v.name + ' ' + (guide.neighborhood||guide.zip));
         html += `<a href="${mapsUrl}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
           <div class="guide-pick-card" style="cursor:pointer;">
             <div class="guide-pick-badge">⭐</div>
@@ -789,7 +838,7 @@ async function renderClientGuide(guide, isAgent) {
     } else {
       html += `<p class="section-label">Top rated in ${activeCat.toLowerCase()}</p><div class="guide-tile-list">`;
       cat.vendors.forEach(v => {
-        const mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(v.name + ' ' + (guide.neighborhood||guide.zip));
+        const mapsUrl = v.place_id ? 'https://www.google.com/maps/place/?q=place_id:' + v.place_id : 'https://maps.google.com/?q=' + encodeURIComponent(v.name + ' ' + (guide.neighborhood||guide.zip));
         html += `<a href="${mapsUrl}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
           <div class="guide-tile" style="cursor:pointer;">
             <span class="guide-tile-emoji">📍</span>
