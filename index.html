@@ -477,7 +477,7 @@ async function loadGuides() {
   console.log('loadGuides: fetching for', currentUser.user.id);
   const data = await dbFetch('guides?agent_id=eq.' + currentUser.user.id + '&order=created_at.desc&select=*');
   console.log('loadGuides result:', data);
-  guides = data || [];
+  guides = Array.isArray(data) ? data : [];
   renderDashboard();
 }
 
