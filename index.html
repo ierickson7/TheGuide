@@ -229,7 +229,7 @@ input:focus, textarea:focus { border-color: var(--deep); }
       <p class="section-label">New guide</p>
       <h2 style="font-family:'Playfair Display',serif;font-weight:400;font-size:22px;margin-bottom:6px;">Where is your client moving?</h2>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:1.25rem;">Enter the zip code and we'll find the top-rated local spots automatically.</p>
-      <div class="field"><label>Zip code</label><input type="text" id="zip-input" placeholder="98116" maxlength="5" oninput="this.value=this.value.replace(/\D/g,'')" /></div>
+      <div class="field"><label>Zip code or address</label><input type="text" id="zip-input" placeholder="98116 or 4521 California Ave SW, Seattle" /></div>
       <div class="field"><label>Neighborhood name (optional)</label><input type="text" id="hood-input" placeholder="e.g. West Seattle" /></div>
       <div class="setup-actions"><button class="btn btn-primary" onclick="startZipLookup()">Build guide →</button></div>
     </div>
@@ -513,7 +513,7 @@ async function confirmDelete() {
 }
 
 function startNewGuide() {
-  setupData = { zip: '', neighborhood: '', vendors: {}, removed: {}, picks: [] };
+  setupData = { zip: '', address: '', neighborhood: '', vendors: {}, removed: {}, picks: [] };
   goSetupStep(1);
   showScreen('setup');
 }
@@ -530,14 +530,26 @@ function goSetupStep(n) {
 }
 
 function startZipLookup() {
-  const zip = document.getElementById('zip-input').value.trim();
+  const input = document.getElementById('zip-input').value.trim();
   const hood = document.getElementById('hood-input').value.trim();
-  if (zip.length < 5) { document.getElementById('zip-input').focus(); return; }
-  setupData.zip = zip;
-  setupData.neighborhood = hood || zip;
+  if (!input) { document.getElementById('zip-input').focus(); return; }
+
+  const isZip = /^\d{5}$/.test(input);
+  setupData.zip = isZip ? input : '';
+  setupData.address = isZip ? '' : input;
+  setupData.neighborhood = hood || '';
+
   document.querySelectorAll('.setup-step').forEach(s => s.classList.remove('active'));
   document.getElementById('setup-step-1b').classList.add('active');
-  const msgs = ['Looking up ' + (hood||zip) + '...','Fetching top restaurants...','Pulling home services & healthcare...','Sorting by review score...','Almost ready...'];
+
+  const label = hood || input;
+  const msgs = [
+    'Looking up ' + label + '...',
+    'Fetching top restaurants...',
+    'Pulling home services & healthcare...',
+    'Sorting by review score...',
+    'Almost ready...'
+  ];
   let i = 0;
   const iv = setInterval(() => {
     if (i < msgs.length) document.getElementById('loading-msg').textContent = msgs[i++];
@@ -552,8 +564,35 @@ function buildVendors() {
     '98107': { name:'Ballard', data:{ 'Restaurants':[{name:"The Walrus and the Carpenter",r:4.8},{name:"Stoneburner",r:4.6},{name:"Bastille Café",r:4.7},{name:"Chan Seattle",r:4.5}], 'Coffee':[{name:"Lighthouse Coffee",r:4.8},{name:"Ballard Coffee Works",r:4.6},{name:"Herkimer Coffee",r:4.7}], 'Home Services':[{name:"Ballard Plumbing",r:4.8},{name:"NW Electric",r:4.6},{name:"Sound HVAC",r:4.5}], 'Healthcare':[{name:"Swedish Ballard",r:4.6},{name:"Ballard Dental",r:4.8},{name:"Bartell Drugs Ballard",r:4.4}], 'Parks':[{name:"Golden Gardens Park",r:4.9},{name:"Ballard Commons",r:4.6},{name:"Salmon Bay Park",r:4.5}] }},
     '98103': { name:'Fremont', data:{ 'Restaurants':[{name:"Revel",r:4.7},{name:"Paseo Caribbean",r:4.8},{name:"Uneeda Burger",r:4.5},{name:"The Whale Wins",r:4.6}], 'Coffee':[{name:"Milstead & Co.",r:4.8},{name:"Fremont Coffee Co.",r:4.7},{name:"Lighthouse Coffee",r:4.6}], 'Home Services':[{name:"Fremont Plumbing",r:4.8},{name:"North Seattle Electric",r:4.6},{name:"Cascade HVAC",r:4.5}], 'Healthcare':[{name:"Fremont Urgent Care",r:4.4},{name:"Aurora Family Dentistry",r:4.7},{name:"Bartell Drugs Fremont",r:4.3}], 'Parks':[{name:"Gas Works Park",r:4.9},{name:"Fremont Canal Park",r:4.6},{name:"Woodland Park",r:4.8}] }},
   };
+
+  // If address entered, try to detect neighborhood from keywords
+  if (setupData.address && !setupData.zip) {
+    const addr = setupData.address.toLowerCase();
+    let match = null;
+    if (addr.includes('california ave') || addr.includes('alki') || addr.includes('west seattle') || addr.includes('fauntleroy') || addr.includes('junction')) match = zips['98116'];
+    else if (addr.includes('capitol hill') || addr.includes('broadway') || addr.includes('15th ave e') || addr.includes('volunteer')) match = zips['98102'];
+    else if (addr.includes('ballard') || addr.includes('market st') || addr.includes('24th ave') || addr.includes('golden gardens')) match = zips['98107'];
+    else if (addr.includes('fremont') || addr.includes('36th') || addr.includes('gas works') || addr.includes('stone way')) match = zips['98103'];
+
+    if (match) {
+      if (!setupData.neighborhood) setupData.neighborhood = match.name;
+      setupData.zip = Object.keys(zips).find(k => zips[k] === match) || '';
+      setupData.vendors = match.data;
+      return;
+    }
+
+    // Unknown address — use generic data and extract city/neighborhood from address
+    if (!setupData.neighborhood) {
+      const parts = setupData.address.split(',');
+      setupData.neighborhood = parts.length > 1 ? parts[parts.length - 2].trim() : parts[0].trim();
+    }
+    setupData.vendors = { 'Restaurants':[{name:"Local Restaurant",r:4.5},{name:"Corner Bistro",r:4.4}], 'Coffee':[{name:"Local Coffee",r:4.6},{name:"Corner Café",r:4.5}], 'Home Services':[{name:"Local Plumbing",r:4.7},{name:"Local Electric",r:4.5}], 'Healthcare':[{name:"Local Urgent Care",r:4.4},{name:"Local Dental",r:4.6}], 'Parks':[{name:"Local Park",r:4.7},{name:"Community Park",r:4.5}] };
+    return;
+  }
+
+  // Zip code lookup
   const match = zips[setupData.zip] || { name: setupData.neighborhood || setupData.zip, data:{ 'Restaurants':[{name:"Local Restaurant",r:4.5},{name:"Corner Bistro",r:4.4}], 'Coffee':[{name:"Local Coffee",r:4.6},{name:"Corner Café",r:4.5}], 'Home Services':[{name:"Local Plumbing",r:4.7},{name:"Local Electric",r:4.5}], 'Healthcare':[{name:"Local Urgent Care",r:4.4},{name:"Local Dental",r:4.6}], 'Parks':[{name:"Local Park",r:4.7},{name:"Community Park",r:4.5}] }};
-  if (!setupData.neighborhood || setupData.neighborhood === setupData.zip) setupData.neighborhood = match.name;
+  if (!setupData.neighborhood) setupData.neighborhood = match.name || setupData.zip;
   setupData.vendors = match.data;
 }
 
@@ -734,12 +773,34 @@ async function renderClientGuide(guide, isAgent) {
     if (cat.isPicks) {
       html += `<p class="section-label">Personally recommended by ${agent.name.split(' ')[0]}</p>`;
       cat.vendors.forEach(v => {
-        html += `<div class="guide-pick-card"><div class="guide-pick-badge">⭐</div><div style="flex:1;min-width:0;"><p class="guide-pick-name">${v.name}</p>${v.agent_note?`<p class="guide-pick-note">"${v.agent_note}"</p>`:''}<p class="guide-pick-stars">${v.rating?stars(v.rating)+' · '+v.rating+' on Google':''}</p></div><span class="kurt-tag">${agent.name.split(' ')[0]}'s pick</span></div>`;
+        const mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(v.name + ' ' + (guide.neighborhood||guide.zip));
+        html += `<a href="${mapsUrl}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
+          <div class="guide-pick-card" style="cursor:pointer;">
+            <div class="guide-pick-badge">⭐</div>
+            <div style="flex:1;min-width:0;">
+              <p class="guide-pick-name">${v.name}</p>
+              ${v.agent_note?`<p class="guide-pick-note">"${v.agent_note}"</p>`:''}
+              <p class="guide-pick-stars">${v.rating?stars(v.rating)+' · '+v.rating+' on Google':''}</p>
+            </div>
+            <span class="kurt-tag">${agent.name.split(' ')[0]}'s pick</span>
+          </div>
+        </a>`;
       });
     } else {
       html += `<p class="section-label">Top rated in ${activeCat.toLowerCase()}</p><div class="guide-tile-list">`;
       cat.vendors.forEach(v => {
-        html += `<div class="guide-tile"><span class="guide-tile-emoji">📍</span><div style="flex:1;min-width:0;"><p class="guide-tile-name">${v.name}</p>${v.address?`<p class="guide-tile-meta">${v.address}</p>`:''}</div>${v.rating?`<span class="guide-tile-stars">${stars(v.rating)}</span>`:''}</div>`;
+        const mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(v.name + ' ' + (guide.neighborhood||guide.zip));
+        html += `<a href="${mapsUrl}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
+          <div class="guide-tile" style="cursor:pointer;">
+            <span class="guide-tile-emoji">📍</span>
+            <div style="flex:1;min-width:0;">
+              <p class="guide-tile-name">${v.name}</p>
+              ${v.address?`<p class="guide-tile-meta">${v.address}</p>`:''}
+            </div>
+            ${v.rating?`<span class="guide-tile-stars">${stars(v.rating)}</span>`:''}
+            <span style="font-size:12px;color:var(--text-faint);margin-left:6px;">↗</span>
+          </div>
+        </a>`;
       });
       html += '</div>';
     }
