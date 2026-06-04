@@ -325,7 +325,7 @@ const SUPA_KEY = 'sb_publishable_VXkujxXi0-tqUuPu_g1Pbg_EQIlMikj';
 
 
 async function fetchPlacesForLocation(query) {
-  const res = await fetch(SUPA_URL + '/functions/v1/places-search', {
+  const res = await fetch(SUPA_URL + '/functions/v1/smart-worker', {
     method: 'POST',
     headers: {
       'Authorization': 'Bearer ' + SUPA_KEY,
