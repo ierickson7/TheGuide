@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Guide.</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBugz1HzGyWhDe5Nddu5tYzkt7r72m02gY&libraries=places"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -229,7 +230,7 @@ input:focus, textarea:focus { border-color: var(--deep); }
       <p class="section-label">New guide</p>
       <h2 style="font-family:'Playfair Display',serif;font-weight:400;font-size:22px;margin-bottom:6px;">Where is your client moving?</h2>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:1.25rem;">Enter the zip code and we'll find the top-rated local spots automatically.</p>
-      <div class="field"><label>Zip code or address</label><input type="text" id="zip-input" placeholder="98116 or 4521 California Ave SW, Seattle" /></div>
+      <div class="field"><label>Zip code or address</label><input type="text" id="zip-input" placeholder="98116 or 4521 California Ave SW, Seattle" autocomplete="off" /></div>
       <div class="field"><label>Neighborhood name (optional)</label><input type="text" id="hood-input" placeholder="e.g. West Seattle" /></div>
       <div class="setup-actions"><button class="btn btn-primary" onclick="startZipLookup()">Build guide →</button></div>
     </div>
@@ -538,6 +539,7 @@ function startNewGuide() {
   setupData = { zip: '', address: '', neighborhood: '', vendors: {}, removed: {}, picks: [] };
   goSetupStep(1);
   showScreen('setup');
+  setTimeout(initAutocomplete, 100);
 }
 
 function goSetupStep(n) {
@@ -871,6 +873,37 @@ function timeAgo(ts) {
   return Math.floor(diff/86400) + 'd ago';
 }
 
+function initAutocomplete() {
+  const input = document.getElementById('zip-input');
+  if (!input || !window.google) return;
+  const autocomplete = new window.google.maps.places.Autocomplete(input, {
+    types: ['address', 'postal_code'],
+    componentRestrictions: { country: 'us' },
+    fields: ['formatted_address', 'address_components', 'geometry', 'name']
+  });
+  autocomplete.addListener('place_changed', () => {
+    const place = autocomplete.getPlace();
+    if (place.formatted_address) {
+      input.value = place.formatted_address;
+      // Auto-extract neighborhood name from address components
+      const components = place.address_components || [];
+      for (const c of components) {
+        if (c.types.includes('neighborhood') || c.types.includes('sublocality')) {
+          document.getElementById('hood-input').value = c.long_name;
+          break;
+        }
+      }
+      // Extract zip if available
+      for (const c of components) {
+        if (c.types.includes('postal_code')) {
+          setupData.zip = c.short_name;
+          break;
+        }
+      }
+    }
+  });
+}
+
 function showScreen(name) {
   console.log('showScreen:', name);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -887,6 +920,14 @@ function showToast(msg) {
 }
 
 window.addEventListener('load', function() {
+  // Initialize Google Places Autocomplete
+  if (window.google && window.google.maps) {
+    initAutocomplete();
+  } else {
+    // Wait for Google Maps to load
+    window.initAutocomplete = initAutocomplete;
+  }
+
   const params = new URLSearchParams(window.location.search);
   const slug = params.get('guide');
   if (slug) { loadGuideBySlug(slug); return; }
