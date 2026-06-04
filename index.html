@@ -582,6 +582,8 @@ function startZipLookup() {
   console.log('Fetching places for:', searchLocation);
   fetchPlacesForLocation(searchLocation).then(vendors => {
     console.log('Places returned:', vendors);
+    console.log('Places keys:', Object.keys(vendors));
+    console.log('First category:', Object.values(vendors)[0]);
     clearInterval(iv);
     setupData.vendors = vendors;
     if (!setupData.neighborhood) setupData.neighborhood = hood || input;
