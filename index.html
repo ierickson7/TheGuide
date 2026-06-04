@@ -654,18 +654,28 @@ function shareViaEmail() {
 
 async function previewGuide(guideId) {
   const guide = guides.find(g => g.id === guideId);
-  if (guide) { await renderClientGuide(guide); showScreen('guide'); }
+  if (guide) { await renderClientGuide(guide, true); showScreen('guide'); }
 }
 
 async function loadGuideBySlug(slug) {
   const data = await dbFetch('guides?slug=eq.' + encodeURIComponent(slug) + '&select=*');
   if (!data || !data[0]) { document.body.innerHTML = '<div style="text-align:center;padding:3rem;font-family:sans-serif;"><h2>Guide not found</h2><p>This guide may have been removed.</p></div>'; return; }
-  await renderClientGuide(data[0]);
+  await renderClientGuide(data[0], false);
   showScreen('guide');
-  dbFetch('guide_views', { method:'POST', body: JSON.stringify({ guide_id: data[0].id }) });
+  // Log view with explicit anon key — no auth needed
+  fetch(SUPA_URL + '/rest/v1/guide_views', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ guide_id: data[0].id })
+  }).then(r => console.log('view logged:', r.status)).catch(e => console.error('view log failed:', e));
 }
 
-async function renderClientGuide(guide) {
+async function renderClientGuide(guide, isAgent) {
   const agentData = await dbFetch('agents?id=eq.' + guide.agent_id + '&select=*');
   const agent = agentData && agentData[0] ? agentData[0] : { name:'Your Agent', brokerage:'' };
   const initials = agent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
@@ -675,6 +685,20 @@ async function renderClientGuide(guide) {
   document.getElementById('guide-agent-name').textContent = agent.name;
   document.getElementById('guide-agent-sub').textContent = (agent.brokerage||'') + ' · Your agent';
   document.getElementById('guide-updated-time').textContent = 'Updated ' + timeAgo(guide.updated_at);
+  if (agent.phone) document.getElementById('guide-call-btn').onclick = () => window.open('tel:' + agent.phone);
+
+  // Show back button for agents previewing their own guide
+  let backBtn = document.getElementById('guide-back-btn');
+  if (!backBtn) {
+    backBtn = document.createElement('button');
+    backBtn.id = 'guide-back-btn';
+    backBtn.style.cssText = 'position:fixed;top:14px;left:14px;background:rgba(250,245,231,0.15);border:0.5px solid rgba(250,245,231,0.3);color:var(--cream);font-family:DM Sans,sans-serif;font-size:12px;padding:6px 12px;border-radius:20px;cursor:pointer;z-index:50;';
+    backBtn.textContent = '← Dashboard';
+    backBtn.onclick = () => showScreen('dashboard');
+    document.getElementById('screen-guide').appendChild(backBtn);
+  }
+  backBtn.style.display = isAgent ? 'block' : 'none';
+
   const cats = await dbFetch('categories?guide_id=eq.' + guide.id + '&order=is_base.desc,sort_order.asc&select=*');
   if (!cats || !cats.length) return;
   const catData = {};
@@ -704,6 +728,13 @@ async function renderClientGuide(guide) {
         html += `<div class="guide-tile"><span class="guide-tile-emoji">📍</span><div style="flex:1;min-width:0;"><p class="guide-tile-name">${v.name}</p>${v.address?`<p class="guide-tile-meta">${v.address}</p>`:''}</div>${v.rating?`<span class="guide-tile-stars">${stars(v.rating)}</span>`:''}</div>`;
       });
       html += '</div>';
+    }
+    // Signup CTA for non-agents
+    if (!isAgent) {
+      html += `<div style="margin-top:2rem;padding:1.25rem;background:var(--bg-secondary);border-radius:14px;text-align:center;">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Want to set up your own guide?</p>
+        <a href="${location.origin + location.pathname}" style="font-size:13px;font-weight:500;color:var(--deep);text-decoration:none;border:0.5px solid var(--deep);padding:7px 18px;border-radius:20px;">Get started free →</a>
+      </div>`;
     }
     document.getElementById('guide-content').innerHTML = html;
   }
