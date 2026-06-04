@@ -322,39 +322,19 @@ input:focus, textarea:focus { border-color: var(--deep); }
 <script>
 const SUPA_URL = 'https://kcfumuctzrzxyusfwcmx.supabase.co';
 const SUPA_KEY = 'sb_publishable_VXkujxXi0-tqUuPu_g1Pbg_EQIlMikj';
-const MAPS_KEY = 'AIzaSyDNLAP2ZD_12SEp4Cbh_d_l9osU5yqP6jA';
 
-const PLACE_CATEGORIES = [
-  { name: 'Restaurants', type: 'restaurant', emoji: '🍽️' },
-  { name: 'Coffee', type: 'cafe', emoji: '☕' },
-  { name: 'Home Services', type: 'plumber', emoji: '🔧' },
-  { name: 'Healthcare', type: 'hospital', emoji: '🏥' },
-  { name: 'Parks', type: 'park', emoji: '🌿' },
-];
 
 async function fetchPlacesForLocation(query) {
-  // Use Places Text Search via our proxy-safe approach
-  const results = {};
-  for (const cat of PLACE_CATEGORIES) {
-    const searchQuery = cat.type + ' near ' + query;
-    const url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?query=' + encodeURIComponent(searchQuery) + '&key=' + MAPS_KEY;
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.results) {
-        results[cat.name] = data.results.slice(0, 5).map(p => ({
-          name: p.name,
-          r: p.rating || null,
-          address: p.formatted_address,
-          place_id: p.place_id
-        }));
-      }
-    } catch(e) {
-      console.error('Places fetch failed for', cat.name, e);
-      results[cat.name] = [];
-    }
-  }
-  return results;
+  const res = await fetch(SUPA_URL + '/functions/v1/places-search', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ query })
+  });
+  if (!res.ok) throw new Error('Places function failed: ' + res.status);
+  return await res.json();
 }
 
 let sb = null;
