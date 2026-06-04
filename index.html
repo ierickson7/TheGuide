@@ -334,7 +334,15 @@ async function fetchPlacesForLocation(query) {
     body: JSON.stringify({ query })
   });
   if (!res.ok) throw new Error('Places function failed: ' + res.status);
-  return await res.json();
+  const data = await res.json();
+  // Handle both old format (direct object) and new format ({ results, neighborhood })
+  if (data.results) {
+    if (data.neighborhood && !setupData.neighborhood) {
+      setupData.neighborhood = data.neighborhood;
+    }
+    return data.results;
+  }
+  return data;
 }
 
 let sb = null;
