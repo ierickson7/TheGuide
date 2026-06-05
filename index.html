@@ -208,7 +208,11 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
   <nav class="nav">
     <span class="nav-logo">The Guide<span>.</span></span>
     <div class="nav-right">
-      <div class="nav-agent"><div class="nav-avatar" id="nav-initials">--</div><span id="nav-name"></span></div>
+      <div class="nav-agent" onclick="openSettings()" style="cursor:pointer;" title="Account settings">
+        <div class="nav-avatar" id="nav-initials">--</div>
+        <span id="nav-name"></span>
+        <span style="font-size:10px;color:rgba(250,245,231,0.4);margin-left:2px;">▾</span>
+      </div>
       <button class="nav-signout" onclick="doSignOut()">Sign out</button>
     </div>
   </nav>
@@ -218,31 +222,8 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       <div class="dash-stat"><div class="dash-stat-val" id="stat-views">0</div><div class="dash-stat-label">Views</div></div>
       <div class="dash-stat"><div class="dash-stat-val" id="stat-drafts">0</div><div class="dash-stat-label">Drafts</div></div>
     </div>
-    <div id="profile-banner" style="display:none;background:rgba(57,8,58,0.06);border:0.5px solid rgba(57,8,58,0.15);border-radius:var(--radius);padding:12px 16px;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <p style="font-size:13px;color:var(--deep);margin:0;">Add your phone number so clients can contact you from their guide.</p>
-      <button class="btn btn-primary btn-sm" onclick="toggleProfileEdit(true)">Add phone</button>
-    </div>
-    <div id="profile-edit" style="display:none;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.25rem;">
-      <p style="font-size:14px;font-weight:500;margin-bottom:12px;">Your profile</p>
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;">
-        <div id="profile-avatar-preview" style="width:64px;height:64px;border-radius:50%;background:var(--deep);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:var(--cream);flex-shrink:0;overflow:hidden;"></div>
-        <div>
-          <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-            📷 Upload photo
-            <input type="file" id="profile-photo" accept="image/*" style="display:none;" onchange="previewPhoto(this)" />
-          </label>
-          <p style="font-size:11px;color:var(--text-faint);margin-top:6px;">Max 5MB · JPG or PNG</p>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Phone</label><input type="tel" id="profile-phone" placeholder="" /></div>
-        <div class="field"><label>Brokerage</label><input type="text" id="profile-brokerage" placeholder="" /></div>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn btn-ghost btn-sm" onclick="toggleProfileEdit(false)">Cancel</button>
-        <button class="btn btn-primary btn-sm" id="save-profile-btn" onclick="saveProfile()">Save</button>
-      </div>
-    </div>
+    <div id="profile-banner" style="display:none;"></div>
+    <div id="profile-edit" style="display:none;"></div>
     <div class="dash-toolbar">
       <div class="dash-filters">
         <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
@@ -350,6 +331,38 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
     </div>
     <div class="guide-cats" id="guide-cats"></div>
     <div class="guide-content" id="guide-content"></div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settings-modal">
+  <div class="modal" style="max-width:480px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+      <p class="modal-title" style="margin:0;">Account settings</p>
+      <button onclick="closeModal('settings-modal')" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-faint);">×</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:1.25rem;">
+      <div id="settings-avatar-preview" style="width:72px;height:72px;border-radius:50%;background:var(--deep);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:500;color:var(--cream);flex-shrink:0;overflow:hidden;"></div>
+      <div>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+          📷 Upload photo
+          <input type="file" id="profile-photo" accept="image/*" style="display:none;" onchange="previewPhoto(this)" />
+        </label>
+        <p style="font-size:11px;color:var(--text-faint);margin-top:6px;">Max 5MB · JPG or PNG</p>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>First name</label><input type="text" id="settings-first" /></div>
+      <div class="field"><label>Last name</label><input type="text" id="settings-last" /></div>
+    </div>
+    <div class="field"><label>Brokerage</label><input type="text" id="settings-brokerage" /></div>
+    <div class="field"><label>Phone</label><input type="tel" id="settings-phone" /></div>
+    <div class="field"><label>Email</label><input type="email" id="settings-email" disabled style="opacity:0.5;" /></div>
+    <p style="font-size:11px;color:var(--text-faint);margin-top:-10px;margin-bottom:14px;">Email cannot be changed</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('settings-modal')">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="save-profile-btn" onclick="saveProfile()">Save changes</button>
+    </div>
   </div>
 </div>
 
@@ -540,9 +553,6 @@ function renderDashboard() {
   document.getElementById('stat-live').textContent = live;
   document.getElementById('stat-drafts').textContent = drafts;
   document.getElementById('stat-views').textContent = guides.reduce((a,g) => a + (g.views||0), 0);
-  // Show profile banner if phone is missing
-  const banner = document.getElementById('profile-banner');
-  if (banner) banner.style.display = (!currentAgent?.phone) ? 'flex' : 'none';
   const filtered = guideFilter === 'all' ? guides : guides.filter(g => g.status === guideFilter);
   const el = document.getElementById('guide-list');
   if (!filtered.length) {
@@ -1061,41 +1071,60 @@ async function uploadPhoto() {
   return SUPA_URL + '/storage/v1/object/public/avatars/' + fileName + '?t=' + Date.now();
 }
 
-function toggleProfileEdit(show) {
-  document.getElementById('profile-edit').style.display = show ? 'block' : 'none';
-  document.getElementById('profile-banner').style.display = show ? 'none' : (!currentAgent?.phone ? 'flex' : 'none');
-  if (show && currentAgent) {
-    document.getElementById('profile-phone').value = currentAgent.phone || '';
-    document.getElementById('profile-brokerage').value = currentAgent.brokerage || '';
-    const preview = document.getElementById('profile-avatar-preview');
-    if (currentAgent.avatar_url) {
-      preview.innerHTML = `<img src="${currentAgent.avatar_url}" style="width:100%;height:100%;object-fit:cover;" />`;
-    } else {
-      const initials = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-      preview.textContent = initials;
-    }
-    pendingPhotoFile = null;
+function previewPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5MB'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('settings-avatar-preview');
+    if (preview) preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+    pendingPhotoFile = file;
+  };
+  reader.readAsDataURL(file);
+}
+
+function toggleProfileEdit(show) {}
+
+function openSettings() {
+  if (!currentAgent) return;
+  const nameParts = currentAgent.name.split(' ');
+  document.getElementById('settings-first').value = nameParts[0] || '';
+  document.getElementById('settings-last').value = nameParts.slice(1).join(' ') || '';
+  document.getElementById('settings-brokerage').value = currentAgent.brokerage || '';
+  document.getElementById('settings-phone').value = currentAgent.phone || '';
+  document.getElementById('settings-email').value = currentAgent.email || '';
+  const preview = document.getElementById('settings-avatar-preview');
+  if (currentAgent.avatar_url) {
+    preview.innerHTML = `<img src="${currentAgent.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+  } else {
+    preview.textContent = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
   }
+  pendingPhotoFile = null;
+  openModal('settings-modal');
 }
 
 async function saveProfile() {
   const btn = document.getElementById('save-profile-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
-  const phone = document.getElementById('profile-phone').value.trim();
-  const brokerage = document.getElementById('profile-brokerage').value.trim();
+  const first = document.getElementById('settings-first').value.trim();
+  const last = document.getElementById('settings-last').value.trim();
+  const brokerage = document.getElementById('settings-brokerage').value.trim();
+  const phone = document.getElementById('settings-phone').value.trim();
   let avatar_url = currentAgent?.avatar_url || null;
   if (pendingPhotoFile) {
     const url = await uploadPhoto();
     if (url) avatar_url = url;
   }
+  const name = (first + ' ' + last).trim();
   await dbFetch('agents?id=eq.' + currentUser.user.id, {
     method: 'PATCH',
-    body: JSON.stringify({ phone: phone || null, brokerage: brokerage || null, avatar_url })
+    body: JSON.stringify({ name: name || currentAgent.name, phone: phone || null, brokerage: brokerage || null, avatar_url })
   });
   await loadAgent();
-  toggleProfileEdit(false);
+  closeModal('settings-modal');
   pendingPhotoFile = null;
-  btn.disabled = false; btn.textContent = 'Save';
+  btn.disabled = false; btn.textContent = 'Save changes';
   showToast('Profile updated!');
 }
 
