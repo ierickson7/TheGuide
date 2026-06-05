@@ -1017,10 +1017,11 @@ async function renderClientGuide(guide, isAgent) {
   }
   document.getElementById('guide-location').textContent = 'Welcome to ' + (guide.neighborhood || guide.zip);
   document.getElementById('guide-zip-text').textContent = guide.zip + ' · ' + (guide.neighborhood||'') + ' · Your personalized local guide';
-  document.getElementById('guide-avatar').textContent = initials;
   document.getElementById('guide-agent-name').textContent = agent.name;
   document.getElementById('guide-agent-sub').textContent = (agent.brokerage||'') + ' · Your agent';
   document.getElementById('guide-updated-time').textContent = 'Updated ' + timeAgo(guide.updated_at);
+
+  const firstName = firstName;
 
   // Wire up contact button
   const contactBtn = document.getElementById('guide-call-btn');
@@ -1055,26 +1056,29 @@ async function renderClientGuide(guide, isAgent) {
   }
   backBtn.style.display = isAgent ? 'block' : 'none';
 
-  const cats = await dbFetch('categories?guide_id=eq.' + guide.id + '&order=is_base.desc,sort_order.asc&select=*');
+  const cats = await dbFetch('categories?guide_id=eq.' + guide.id + '&order=is_base.asc,sort_order.asc&select=*');
   if (!cats || !cats.length) return;
   const catData = {};
   for (const cat of cats) {
     const vendors = await dbFetch('vendors?category_id=eq.' + cat.id + '&order=rating.desc&select=*');
-    catData[cat.name] = { vendors: vendors||[], isPicks: !cat.is_base };
+    // Rename "Agent's Picks" to "[First name]'s Picks"
+    const displayName = !cat.is_base ? firstName + "'s Picks" : cat.name;
+    catData[displayName] = { vendors: vendors||[], isPicks: !cat.is_base };
   }
   let activeCat = Object.keys(catData)[0];
+  const catKeys = Object.keys(catData);
   function renderCats() {
-    document.getElementById('guide-cats').innerHTML = Object.keys(catData).map(c =>
-      `<button class="guide-cat-btn${c===activeCat?' active':''}" onclick="guideCatClick('${c}')">${c}</button>`
+    document.getElementById('guide-cats').innerHTML = catKeys.map((c, i) =>
+      `<button class="guide-cat-btn${c===activeCat?' active':''}" onclick="guideCatClick(${i})">${c}</button>`
     ).join('');
     renderCatContent();
   }
-  window.guideCatClick = function(cat) { activeCat = cat; renderCats(); };
+  window.guideCatClick = function(i) { activeCat = catKeys[i]; renderCats(); };
   function renderCatContent() {
     const cat = catData[activeCat];
     let html = '';
     if (cat.isPicks) {
-      html += `<p class="section-label">Personally recommended by ${agent.name.split(' ')[0]}</p>`;
+      html += `<p class="section-label">Personally recommended by ${firstName}</p>`;
       cat.vendors.forEach(v => {
         const mapsUrl = v.place_id ? 'https://www.google.com/maps/place/?q=place_id:' + v.place_id : 'https://maps.google.com/?q=' + encodeURIComponent(v.name + ' ' + (guide.neighborhood||guide.zip));
         html += `<a href="${mapsUrl}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
@@ -1085,7 +1089,7 @@ async function renderClientGuide(guide, isAgent) {
               ${v.agent_note?`<p class="guide-pick-note">"${v.agent_note}"</p>`:''}
               <p class="guide-pick-stars">${v.rating?stars(v.rating)+' · '+v.rating+' on Google':''}</p>
             </div>
-            <span class="kurt-tag">${agent.name.split(' ')[0]}'s pick</span>
+            <span class="kurt-tag">${firstName}'s pick</span>
           </div>
         </a>`;
       });
