@@ -840,8 +840,9 @@ function initPickAutocomplete() {
       const place = ac.getPlace();
       if (place.place_id) {
         pendingPickPlaceId = place.place_id;
-        // Use only the business name, not the full address
-        input.value = place.name;
+        // Use only the business name — strip any address that got appended
+        const rawName = place.name || '';
+        input.value = rawName.split(',')[0].trim();
         input._justSelected = true;
         document.getElementById('pick-place-hint').style.display = 'block';
         // Auto-suggest category from place types
