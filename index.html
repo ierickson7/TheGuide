@@ -1084,14 +1084,17 @@ async function renderClientGuide(guide, isAgent) {
     if (cat.isPicks) {
       html += `<p class="section-label">Personally recommended by ${firstName}</p>`;
       cat.vendors.forEach(v => {
-        const mapsUrl = v.place_id ? 'https://www.google.com/maps/place/?q=place_id:' + v.place_id : 'https://maps.google.com/?q=' + encodeURIComponent(v.name + ' ' + (guide.neighborhood||guide.zip));
+        const cleanName = v.name ? v.name.split(',')[0].trim() : v.name;
+        const mapsUrl = v.place_id ? 'https://www.google.com/maps/place/?q=place_id:' + v.place_id : 'https://maps.google.com/?q=' + encodeURIComponent(cleanName + ' ' + (guide.neighborhood||guide.zip));
         html += `<a href="${mapsUrl}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
           <div class="guide-pick-card" style="cursor:pointer;">
-            <div class="guide-pick-badge">⭐</div>
-            <div style="flex:1;min-width:0;">
-              <p class="guide-pick-name">${v.name}</p>
+            <div class="guide-pick-badge" style="display:flex;align-items:center;justify-content:center;">⭐</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">
+              <p class="guide-pick-name">${cleanName}</p>
               ${v.agent_note?`<p class="guide-pick-note">"${v.agent_note}"</p>`:''}
-              <p class="guide-pick-stars">${v.rating?stars(v.rating)+' · '+v.rating+' on Google':''}</p>
+              <p class="guide-pick-stars" style="display:flex;align-items:center;gap:6px;">
+                ${v.rating?`<span>${stars(v.rating)} · ${v.rating} on Google</span>`:''}
+              </p>
             </div>
             <span class="kurt-tag">${firstName}'s pick</span>
           </div>
