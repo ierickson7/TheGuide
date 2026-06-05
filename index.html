@@ -78,26 +78,30 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
 .auth-tab:first-child { border-right: 0.5px solid var(--border-strong); }
 .auth-error { font-size: 12px; color: var(--red); margin-top: 8px; text-align: center; min-height: 18px; }
 #screen-dashboard { background: var(--bg-secondary); }
-.dashboard-wrap { max-width: 680px; margin: 0 auto; padding: 20px 16px; }
-.dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
-.dash-stat { background: var(--bg); border-radius: var(--radius); padding: 14px; text-align: center; border: 0.5px solid var(--border); }
-.dash-stat-val { font-size: 26px; font-weight: 500; color: var(--text); }
+.dashboard-wrap { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+.dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+.dash-stat { background: var(--bg); border-radius: var(--radius); padding: 18px; text-align: center; border: 0.5px solid var(--border); }
+.dash-stat-val { font-size: 30px; font-weight: 500; color: var(--text); }
 .dash-stat-label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 2px; }
-.dash-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.dash-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .dash-filters { display: flex; gap: 6px; }
 .filter-btn { font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 5px 13px; border-radius: 20px; border: 0.5px solid var(--border-strong); background: var(--bg); color: var(--text-muted); cursor: pointer; }
 .filter-btn.active { background: var(--deep); color: var(--cream); border-color: var(--deep); }
-.guide-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
-.guide-icon { width: 42px; height: 42px; border-radius: 10px; background: var(--deep); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.guide-list-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 768px) { .guide-list-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1100px) { .guide-list-grid { grid-template-columns: repeat(3, 1fr); } }
+.guide-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; height: 100%; }
+.guide-card-top { display: flex; align-items: flex-start; gap: 12px; }
+.guide-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--deep); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
 .guide-info { flex: 1; min-width: 0; }
-.guide-name { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; display: flex; align-items: center; gap: 7px; }
+.guide-name { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .guide-meta { font-size: 12px; color: var(--text-faint); }
-.guide-views { font-size: 12px; color: var(--text-faint); text-align: right; min-width: 55px; }
-.guide-views strong { font-size: 16px; font-weight: 500; color: var(--text); display: block; }
-.guide-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.empty-state { text-align: center; padding: 3rem; color: var(--text-faint); font-size: 14px; }
+.guide-views { font-size: 12px; color: var(--text-faint); text-align: right; }
+.guide-views strong { font-size: 18px; font-weight: 500; color: var(--text); display: block; }
+.guide-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; border-top: 0.5px solid var(--border); padding-top: 10px; }
+.empty-state { text-align: center; padding: 4rem; color: var(--text-faint); font-size: 14px; grid-column: 1 / -1; }
 #screen-setup { background: var(--bg-secondary); }
-.setup-wrap { max-width: 600px; margin: 0 auto; padding: 20px 16px; }
+.setup-wrap { max-width: 720px; margin: 0 auto; padding: 28px 24px; }
 .setup-progress { display: flex; align-items: center; gap: 6px; margin-bottom: 1.5rem; }
 .prog-step { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-faint); }
 .prog-step.active { color: var(--text); font-weight: 500; }
@@ -133,8 +137,9 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
 .copy-btn { font-size: 11px; color: #fff; background: var(--red); border: none; border-radius: 6px; padding: 5px 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; flex-shrink: 0; }
 .share-row { display: flex; gap: 8px; margin-top: 10px; }
 .share-btn { flex: 1; padding: 9px; border-radius: var(--radius); font-size: 12px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; background: rgba(250,245,231,0.1); border: 0.5px solid rgba(250,245,231,0.2); color: var(--cream); display: flex; align-items: center; justify-content: center; gap: 6px; }
-#screen-guide { background: var(--bg); }
-.guide-wrap { max-width: 500px; margin: 0 auto; }
+#screen-guide { background: var(--bg-secondary); }
+.guide-wrap { max-width: 680px; margin: 0 auto; background: var(--bg); }
+@media (min-width: 768px) { .guide-wrap { border-left: 0.5px solid var(--border); border-right: 0.5px solid var(--border); min-height: 100vh; box-shadow: 0 0 40px rgba(0,0,0,0.06); } }
 .guide-hero { background: var(--deep); padding: 2rem 1.25rem 1.25rem; position: relative; overflow: hidden; }
 .guide-hero-bg { position: absolute; inset: 0; background: repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 12px); pointer-events: none; }
 .guide-location { font-family: 'Playfair Display', serif; font-size: 26px; color: var(--cream); margin-bottom: 3px; position: relative; }
@@ -504,21 +509,26 @@ function renderDashboard() {
   document.getElementById('stat-views').textContent = guides.reduce((a,g) => a + (g.views||0), 0);
   const filtered = guideFilter === 'all' ? guides : guides.filter(g => g.status === guideFilter);
   const el = document.getElementById('guide-list');
-  if (!filtered.length) { el.innerHTML = '<div class="empty-state">No guides yet — create your first one!</div>'; return; }
-  el.innerHTML = filtered.map(g => `
+  if (!filtered.length) {
+    el.innerHTML = '<div class="guide-list-grid"><div class="empty-state">No guides yet — create your first one!</div></div>';
+    return;
+  }
+  el.innerHTML = '<div class="guide-list-grid">' + filtered.map(g => `
     <div class="guide-card">
-      <div class="guide-icon">${g.emoji || '📍'}</div>
-      <div class="guide-info">
-        <div class="guide-name">${g.neighborhood || g.zip} <span class="pill pill-${g.status}">${g.status}</span></div>
-        <div class="guide-meta">${g.zip} · updated ${timeAgo(g.updated_at)}</div>
+      <div class="guide-card-top">
+        <div class="guide-icon">${g.emoji || '📍'}</div>
+        <div class="guide-info">
+          <div class="guide-name">${g.neighborhood || g.zip} <span class="pill pill-${g.status}">${g.status}</span></div>
+          <div class="guide-meta">${g.zip} · updated ${timeAgo(g.updated_at)}</div>
+        </div>
+        <div class="guide-views"><strong>${g.views||0}</strong>views</div>
       </div>
-      <div class="guide-views"><strong>${g.views||0}</strong>views</div>
       <div class="guide-actions">
         <button class="btn btn-ghost btn-sm" onclick="copyGuideLink('${g.slug||g.id}',this)">Copy link</button>
         <button class="btn btn-ghost btn-sm" onclick="previewGuide('${g.id}')">View</button>
         <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="askDelete('${g.id}','${(g.neighborhood||g.zip).replace(/'/g,'')}')">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`).join('') + '</div>';
 }
 
 function setFilter(f, btn) {
