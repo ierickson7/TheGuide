@@ -1098,21 +1098,22 @@ function previewPhoto(input) {
 function openCropper(src, file) {
   console.log('openCropper called');
   const overlay = document.getElementById('crop-overlay');
-  console.log('overlay element:', overlay, 'current display:', overlay?.style.display);
+  const canvas = document.getElementById('crop-canvas');
   overlay.style.display = 'flex';
-  console.log('overlay display set to flex');
   cropImg = new Image();
   cropImg.onload = () => {
-    const maxW = Math.min(340, window.innerWidth - 48);
-    const scale = maxW / cropImg.width;
+    console.log('cropImg loaded:', cropImg.width, cropImg.height);
+    const maxW = Math.min(340, window.innerWidth - 80);
+    const ratio = cropImg.height / cropImg.width;
     canvas.width = maxW;
-    canvas.height = Math.min(cropImg.height * scale, 300);
+    canvas.height = Math.min(maxW * ratio, 320);
     cropSize = Math.min(canvas.width, canvas.height) * 0.8;
     cropX = (canvas.width - cropSize) / 2;
     cropY = (canvas.height - cropSize) / 2;
     pendingPhotoFile = file;
     drawCrop();
   };
+  cropImg.onerror = (e) => console.error('Image failed to load', e);
   cropImg.src = src;
 }
 
