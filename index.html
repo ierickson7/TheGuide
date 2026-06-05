@@ -388,7 +388,7 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
     <p style="font-size:11px;color:var(--text-faint);margin-top:-10px;margin-bottom:14px;">Email cannot be changed</p>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('settings-modal')">Cancel</button>
-      <button class="btn btn-primary btn-sm" id="save-profile-btn" onclick="saveProfile()">Save changes</button>
+      <button class="btn btn-primary btn-sm" id="save-profile-btn" onclick="console.log('save btn clicked');saveProfile()">Save changes</button>
     </div>
   </div>
 </div>
@@ -1211,9 +1211,10 @@ async function compressImage(file) {
 
 async function uploadPhoto() {
   console.log('uploadPhoto called, pendingPhotoFile:', pendingPhotoFile, 'currentUser:', !!currentUser);
-  if (!pendingPhotoFile || !currentUser) return null;
-  const compressed = await compressImage(pendingPhotoFile);
+  if (!pendingPhotoFile || pendingPhotoFile === 'remove' || !currentUser) return null;
   const fileName = currentUser.user.id + '.jpg';
+  console.log('Uploading photo:', fileName);
+  // Use the file directly — already compressed/cropped
   const res = await fetch(SUPA_URL + '/storage/v1/object/avatars/' + fileName, {
     method: 'POST',
     headers: {
@@ -1222,8 +1223,9 @@ async function uploadPhoto() {
       'Content-Type': 'image/jpeg',
       'x-upsert': 'true'
     },
-    body: compressed
+    body: pendingPhotoFile
   });
+  console.log('Upload response:', res.status);
   if (!res.ok) { console.error('Photo upload failed:', res.status); return null; }
   return SUPA_URL + '/storage/v1/object/public/avatars/' + fileName + '?t=' + Date.now();
 }
