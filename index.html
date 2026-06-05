@@ -373,7 +373,7 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('profile-photo').click()" style="display:inline-flex;align-items:center;gap:6px;">
           📷 Upload photo
         </button>
-        <button id="recrop-btn" onclick="reCrop()" style="display:none;" class="btn btn-ghost btn-sm">✂️ Re-crop</button>
+        <button id="recrop-btn" onclick="reCrop()" style="display:none;" class="btn btn-ghost btn-sm">✂️ Adjust photo</button>
         <input type="file" id="profile-photo" accept="image/*" style="display:none;" />
         <button id="remove-photo-btn" onclick="removePhoto()" style="display:none;background:none;border:none;cursor:pointer;font-size:12px;color:var(--red);font-family:DM Sans,sans-serif;text-align:left;padding:0;">Remove photo</button>
         <p style="font-size:11px;color:var(--text-faint);margin:0;">Max 5MB · JPG or PNG</p>
@@ -1132,7 +1132,22 @@ function drawCrop() {
   const canvas = document.getElementById('crop-canvas');
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(cropImg, 0, 0, canvas.width, canvas.height);
+  // Draw image preserving aspect ratio
+  const imgRatio = cropImg.width / cropImg.height;
+  const canvasRatio = canvas.width / canvas.height;
+  let drawW, drawH, drawX, drawY;
+  if (imgRatio > canvasRatio) {
+    drawH = canvas.height;
+    drawW = drawH * imgRatio;
+    drawX = (canvas.width - drawW) / 2;
+    drawY = 0;
+  } else {
+    drawW = canvas.width;
+    drawH = drawW / imgRatio;
+    drawX = 0;
+    drawY = (canvas.height - drawH) / 2;
+  }
+  ctx.drawImage(cropImg, drawX, drawY, drawW, drawH);
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.save();
@@ -1145,7 +1160,7 @@ function drawCrop() {
   ctx.beginPath();
   ctx.arc(cropX + cropSize/2, cropY + cropSize/2, cropSize/2, 0, Math.PI*2);
   ctx.clip();
-  ctx.drawImage(cropImg, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(cropImg, drawX, drawY, drawW, drawH);
   ctx.restore();
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 2;
@@ -1182,29 +1197,46 @@ let lastCropSrc = null;
 let lastCropFile = null;
 
 function reCrop() {
-  if (lastCropSrc && lastCropFile) {
-    openCropper(lastCropSrc, lastCropFile);
-  }
+  if (lastCropSrc && lastCropFile) openCropper(lastCropSrc, lastCropFile);
 }
 
 function applyCrop() {
   const canvas = document.getElementById('crop-canvas');
-  const scaleX = cropImg.width / canvas.width;
-  const scaleY = cropImg.height / canvas.height;
   const out = document.createElement('canvas');
   out.width = 400; out.height = 400;
   const ctx = out.getContext('2d');
+  // Calculate same draw dimensions as drawCrop
+  const imgRatio = cropImg.width / cropImg.height;
+  const canvasRatio = canvas.width / canvas.height;
+  let drawW, drawH, drawX, drawY;
+  if (imgRatio > canvasRatio) {
+    drawH = canvas.height;
+    drawW = drawH * imgRatio;
+    drawX = (canvas.width - drawW) / 2;
+    drawY = 0;
+  } else {
+    drawW = canvas.width;
+    drawH = drawW / imgRatio;
+    drawX = 0;
+    drawY = (canvas.height - drawH) / 2;
+  }
+  // Scale crop coordinates back to original image
+  const scaleX = cropImg.width / drawW;
+  const scaleY = cropImg.height / drawH;
+  const srcX = (cropX - drawX) * scaleX;
+  const srcY = (cropY - drawY) * scaleY;
+  const srcW = cropSize * scaleX;
+  const srcH = cropSize * scaleY;
   ctx.beginPath();
   ctx.arc(200, 200, 200, 0, Math.PI*2);
   ctx.clip();
-  ctx.drawImage(cropImg, cropX*scaleX, cropY*scaleY, cropSize*scaleX, cropSize*scaleY, 0, 0, 400, 400);
+  ctx.drawImage(cropImg, srcX, srcY, srcW, srcH, 0, 0, 400, 400);
   out.toBlob((blob) => {
     pendingPhotoFile = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
     const url = URL.createObjectURL(blob);
     const preview = document.getElementById('settings-avatar-preview');
     if (preview) preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
     document.getElementById('crop-overlay').style.display = 'none';
-    // Show re-crop and remove buttons
     const recropBtn = document.getElementById('recrop-btn');
     const removeBtn = document.getElementById('remove-photo-btn');
     if (recropBtn) recropBtn.style.display = 'inline-flex';
