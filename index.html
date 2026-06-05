@@ -1262,10 +1262,9 @@ function openSettings() {
     preview.textContent = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
     if (removeBtn) removeBtn.style.display = 'none';
   }
-  // Wire up file input fresh each time
+  // Reset file input
   const fileInput = document.getElementById('profile-photo');
-  fileInput.value = '';
-  fileInput.onchange = function() { previewPhoto(this); };
+  if (fileInput) fileInput.value = '';
   pendingPhotoFile = null;
   openModal('settings-modal');
 }
@@ -1324,6 +1323,14 @@ function showToast(msg) {
 }
 
 window.addEventListener('load', function() {
+  // Wire up photo upload input immediately on load
+  const photoInput = document.getElementById('profile-photo');
+  if (photoInput) {
+    photoInput.addEventListener('change', function() {
+      console.log('photo input changed, files:', this.files?.length);
+      previewPhoto(this);
+    });
+  }
   // Check for password reset token in URL hash
   const hash = window.location.hash;
   if (hash && hash.includes('type=recovery')) {
