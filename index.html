@@ -370,10 +370,10 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:1.25rem;">
       <div id="settings-avatar-preview" style="width:72px;height:72px;border-radius:50%;background:var(--deep);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:500;color:var(--cream);flex-shrink:0;overflow:hidden;"></div>
       <div style="display:flex;flex-direction:column;gap:6px;">
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('profile-photo').click()" style="display:inline-flex;align-items:center;gap:6px;">
           📷 Upload photo
-          <input type="file" id="profile-photo" accept="image/*" style="display:none;" onchange="previewPhoto(this)" />
-        </label>
+        </button>
+        <input type="file" id="profile-photo" accept="image/*" style="display:none;" onchange="previewPhoto(this)" />
         <button id="remove-photo-btn" onclick="removePhoto()" style="display:none;background:none;border:none;cursor:pointer;font-size:12px;color:var(--red);font-family:DM Sans,sans-serif;text-align:left;padding:0;">Remove photo</button>
         <p style="font-size:11px;color:var(--text-faint);margin:0;">Max 5MB · JPG or PNG</p>
       </div>
