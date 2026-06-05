@@ -1210,6 +1210,7 @@ async function compressImage(file) {
 }
 
 async function uploadPhoto() {
+  console.log('uploadPhoto called, pendingPhotoFile:', pendingPhotoFile, 'currentUser:', !!currentUser);
   if (!pendingPhotoFile || !currentUser) return null;
   const compressed = await compressImage(pendingPhotoFile);
   const fileName = currentUser.user.id + '.jpg';
@@ -1259,6 +1260,10 @@ function openSettings() {
     preview.textContent = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
     if (removeBtn) removeBtn.style.display = 'none';
   }
+  // Wire up file input fresh each time
+  const fileInput = document.getElementById('profile-photo');
+  fileInput.value = '';
+  fileInput.onchange = function() { previewPhoto(this); };
   pendingPhotoFile = null;
   openModal('settings-modal');
 }
@@ -1277,6 +1282,7 @@ function removePhoto() {
 async function saveProfile() {
   const btn = document.getElementById('save-profile-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
+  console.log('saveProfile called, pendingPhotoFile:', pendingPhotoFile);
   const first = document.getElementById('settings-first').value.trim();
   const last = document.getElementById('settings-last').value.trim();
   const brokerage = document.getElementById('settings-brokerage').value.trim();
