@@ -840,7 +840,9 @@ function initPickAutocomplete() {
       const place = ac.getPlace();
       if (place.place_id) {
         pendingPickPlaceId = place.place_id;
+        // Use only the business name, not the full address
         input.value = place.name;
+        input._justSelected = true;
         document.getElementById('pick-place-hint').style.display = 'block';
         // Auto-suggest category from place types
         const types = place.types || [];
@@ -1010,8 +1012,9 @@ async function renderClientGuide(guide, isAgent) {
   const initials = agent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const guideAvatar = document.getElementById('guide-avatar');
   if (agent.avatar_url) {
-    guideAvatar.innerHTML = `<img src="${agent.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
-    guideAvatar.textContent = '';
+    guideAvatar.style.padding = '0';
+    guideAvatar.style.overflow = 'hidden';
+    guideAvatar.innerHTML = `<img src="${agent.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />`;
   } else {
     guideAvatar.textContent = initials;
   }
