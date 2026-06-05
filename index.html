@@ -637,6 +637,7 @@ function renderDashboard() {
       <div class="guide-actions">
         <button class="btn btn-ghost btn-sm" onclick="copyGuideLink('${g.slug||g.id}',this)">Copy link</button>
         <button class="btn btn-ghost btn-sm" onclick="previewGuide('${g.id}')">View</button>
+        <button class="btn btn-ghost btn-sm" onclick="editGuide('${g.id}')">Edit</button>
         <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="askDelete('${g.id}','${(g.neighborhood||g.zip).replace(/'/g,'')}')">Delete</button>
       </div>
     </div>`).join('') + '</div>';
@@ -671,9 +672,11 @@ async function confirmDelete() {
 }
 
 function startNewGuide() {
-  setupData = { zip: '', address: '', neighborhood: '', vendors: {}, removed: {}, picks: [] };
+  setupData = { zip: '', address: '', neighborhood: '', vendors: {}, removed: {}, picks: [], guideId: null };
   goSetupStep(1);
   showScreen('setup');
+  const logo = document.querySelector('#screen-setup .nav-logo');
+  if (logo) logo.innerHTML = 'The Guide<span style="color:var(--red)">.</span>';
   setTimeout(initAutocomplete, 100);
 }
 
@@ -830,14 +833,58 @@ function addPick() {
 
 function removePick(i) { setupData.picks.splice(i,1); renderPicks(); }
 
+async function editGuide(guideId) {
+  const guide = guides.find(g => g.id === guideId);
+  if (!guide) return;
+  // Load existing categories and vendors
+  const cats = await dbFetch('categories?guide_id=eq.' + guideId + '&order=is_base.desc,sort_order.asc&select=*');
+  if (!cats) return;
+  setupData = { zip: guide.zip, address: '', neighborhood: guide.neighborhood, vendors: {}, removed: {}, picks: [], guideId };
+  for (const cat of cats) {
+    const vendors = await dbFetch('vendors?category_id=eq.' + cat.id + '&order=rating.desc&select=*');
+    if (!vendors) continue;
+    if (!cat.is_base) {
+      // Agent picks
+      setupData.picks = vendors.map(v => ({ name: v.name, cat: 'Pick', note: v.agent_note || '' }));
+    } else {
+      setupData.vendors[cat.name] = vendors.map(v => ({ name: v.name, r: v.rating, address: v.address }));
+    }
+  }
+  goSetupStep(3);
+  renderPicks();
+  showScreen('setup');
+  // Update nav title
+  document.querySelector('#screen-setup .nav-logo').textContent = 'Editing: ' + guide.neighborhood;
+}
+
 async function saveAndPublish() {
   if (!currentUser) return;
+  // Check for unsaved pick in input field
+  const pickNameInput = document.getElementById('pick-name');
+  if (pickNameInput && pickNameInput.value.trim()) {
+    const confirm = window.confirm('You have an unsaved pick "' + pickNameInput.value.trim() + '" — add it before publishing?');
+    if (confirm) { addPick(); }
+  }
   const agentSlug = (currentAgent?.name || 'agent').toLowerCase().replace(/\s+/g,'-');
   const hoodSlug = setupData.neighborhood.toLowerCase().replace(/\s+/g,'-');
   const slug = agentSlug + '-' + hoodSlug + '-' + setupData.zip;
-  const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji:'📍', status:'live', slug }) });
-  if (!guideRes || !guideRes[0]) { showToast('Error saving guide'); return; }
-  const guideId = guideRes[0].id;
+
+  let guideId = setupData.guideId;
+
+  if (guideId) {
+    // Editing existing guide — delete old categories (cascades to vendors)
+    await dbFetch('categories?guide_id=eq.' + guideId, { method: 'DELETE' });
+    // Update guide metadata
+    await dbFetch('guides?id=eq.' + guideId, {
+      method: 'PATCH',
+      body: JSON.stringify({ neighborhood: setupData.neighborhood, zip: setupData.zip, updated_at: new Date().toISOString() })
+    });
+  } else {
+    // New guide
+    const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji:'📍', status:'live', slug }) });
+    if (!guideRes || !guideRes[0]) { showToast('Error saving guide'); return; }
+    guideId = guideRes[0].id;
+  }
   for (const [cat, vendors] of Object.entries(setupData.vendors)) {
     const catRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name: cat, is_base: true }) });
     if (!catRes || !catRes[0]) continue;
@@ -858,6 +905,7 @@ async function saveAndPublish() {
   const link = location.origin + location.pathname + '?guide=' + slug;
   document.getElementById('publish-link').textContent = link;
   document.getElementById('publish-sub').textContent = setupData.neighborhood + ' · ' + setupData.zip;
+  document.querySelector('#setup-step-4 .publish-title').textContent = setupData.guideId ? 'Guide updated! 🎉' : 'Your guide is live! 🎉';
   goSetupStep(4);
   loadGuides();
 }
