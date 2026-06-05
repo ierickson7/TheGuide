@@ -373,7 +373,8 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('profile-photo').click()" style="display:inline-flex;align-items:center;gap:6px;">
           📷 Upload photo
         </button>
-        <input type="file" id="profile-photo" accept="image/*" style="display:none;" onchange="previewPhoto(this)" />
+        <button id="recrop-btn" onclick="reCrop()" style="display:none;" class="btn btn-ghost btn-sm">✂️ Re-crop</button>
+        <input type="file" id="profile-photo" accept="image/*" style="display:none;" />
         <button id="remove-photo-btn" onclick="removePhoto()" style="display:none;background:none;border:none;cursor:pointer;font-size:12px;color:var(--red);font-family:DM Sans,sans-serif;text-align:left;padding:0;">Remove photo</button>
         <p style="font-size:11px;color:var(--text-faint);margin:0;">Max 5MB · JPG or PNG</p>
       </div>
@@ -1091,7 +1092,12 @@ function previewPhoto(input) {
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5MB'); return; }
   const reader = new FileReader();
-  reader.onload = (e) => { console.log('FileReader loaded, opening cropper'); openCropper(e.target.result, file); };
+  reader.onload = (e) => {
+    console.log('FileReader loaded, opening cropper');
+    lastCropSrc = e.target.result;
+    lastCropFile = file;
+    openCropper(e.target.result, file);
+  };
   reader.readAsDataURL(file);
 }
 
@@ -1103,10 +1109,15 @@ function openCropper(src, file) {
   cropImg = new Image();
   cropImg.onload = () => {
     console.log('cropImg loaded:', cropImg.width, cropImg.height);
-    const maxW = Math.min(340, window.innerWidth - 80);
+    // Get the actual rendered width of the canvas container
+    const containerW = Math.min(340, window.innerWidth - 80);
     const ratio = cropImg.height / cropImg.width;
-    canvas.width = maxW;
-    canvas.height = Math.min(maxW * ratio, 320);
+    // Set canvas CSS size
+    canvas.style.width = containerW + 'px';
+    canvas.style.height = Math.min(containerW * ratio, 320) + 'px';
+    // Set actual pixel dimensions to match (no DPR scaling to keep it simple)
+    canvas.width = containerW;
+    canvas.height = Math.min(containerW * ratio, 320);
     cropSize = Math.min(canvas.width, canvas.height) * 0.8;
     cropX = (canvas.width - cropSize) / 2;
     cropY = (canvas.height - cropSize) / 2;
@@ -1167,6 +1178,15 @@ function doDrag(e) {
 
 function endDrag() { isDragging = false; }
 
+let lastCropSrc = null;
+let lastCropFile = null;
+
+function reCrop() {
+  if (lastCropSrc && lastCropFile) {
+    openCropper(lastCropSrc, lastCropFile);
+  }
+}
+
 function applyCrop() {
   const canvas = document.getElementById('crop-canvas');
   const scaleX = cropImg.width / canvas.width;
@@ -1184,6 +1204,11 @@ function applyCrop() {
     const preview = document.getElementById('settings-avatar-preview');
     if (preview) preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
     document.getElementById('crop-overlay').style.display = 'none';
+    // Show re-crop and remove buttons
+    const recropBtn = document.getElementById('recrop-btn');
+    const removeBtn = document.getElementById('remove-photo-btn');
+    if (recropBtn) recropBtn.style.display = 'inline-flex';
+    if (removeBtn) removeBtn.style.display = 'block';
   }, 'image/jpeg', 0.9);
 }
 
@@ -1244,12 +1269,15 @@ function openSettings() {
   document.getElementById('settings-email').value = currentAgent.email || '';
   const preview = document.getElementById('settings-avatar-preview');
   const removeBtn = document.getElementById('remove-photo-btn');
+  const recropBtn = document.getElementById('recrop-btn');
   if (currentAgent.avatar_url) {
     preview.innerHTML = `<img src="${currentAgent.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
     if (removeBtn) removeBtn.style.display = 'block';
+    if (recropBtn) recropBtn.style.display = 'none';
   } else {
     preview.textContent = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
     if (removeBtn) removeBtn.style.display = 'none';
+    if (recropBtn) recropBtn.style.display = 'none';
   }
   // Reset file input
   const fileInput = document.getElementById('profile-photo');
