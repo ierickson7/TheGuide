@@ -291,9 +291,10 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       <div id="picks-list"></div>
       <div style="border-top:0.5px solid var(--border);padding-top:14px;margin-top:4px;">
         <div class="field-row">
-          <div class="field"><label>Business name</label><input type="text" id="pick-name" placeholder="e.g. Mike's Plumbing" /></div>
+          <div class="field"><label>Business name</label><input type="text" id="pick-name" placeholder="Search for a business..." autocomplete="off" oninput="if(!this._justSelected){pendingPickPlaceId=null;document.getElementById('pick-place-hint').style.display='none';}this._justSelected=false;" /></div>
           <div class="field" style="max-width:140px;"><label>Category</label><input type="text" id="pick-cat" placeholder="Home Services" /></div>
         </div>
+        <p id="pick-place-hint" style="font-size:11px;color:var(--deep);margin-top:-10px;margin-bottom:10px;display:none;">📍 Linked to Google Maps</p>
         <div class="field"><label>Your personal note</label><textarea id="pick-note" rows="2" placeholder="What makes this place special..."></textarea></div>
         <button class="btn btn-primary btn-sm" onclick="addPick()">+ Add pick</button>
       </div>
@@ -689,6 +690,7 @@ function goSetupStep(n) {
     if (i < n) el.classList.add('done');
     else if (i === n) el.classList.add('active');
   }
+  if (n === 3) setTimeout(initPickAutocomplete, 100);
 }
 
 function startZipLookup() {
@@ -819,15 +821,55 @@ function renderPicks() {
     </div>`).join('');
 }
 
+let pendingPickPlaceId = null;
+
+function initPickAutocomplete() {
+  const input = document.getElementById('pick-name');
+  if (!input || !window.google?.maps?.places) {
+    setTimeout(initPickAutocomplete, 300);
+    return;
+  }
+  // Clear any existing autocomplete
+  if (input._pickAutocomplete) return;
+  try {
+    const ac = new window.google.maps.places.Autocomplete(input, {
+      types: ['establishment'],
+      fields: ['name', 'place_id', 'types']
+    });
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace();
+      if (place.place_id) {
+        pendingPickPlaceId = place.place_id;
+        input.value = place.name;
+        document.getElementById('pick-place-hint').style.display = 'block';
+        // Auto-suggest category from place types
+        const types = place.types || [];
+        const catInput = document.getElementById('pick-cat');
+        if (!catInput.value) {
+          if (types.includes('restaurant') || types.includes('food') || types.includes('cafe')) catInput.value = 'Restaurants';
+          else if (types.includes('park')) catInput.value = 'Parks';
+          else if (types.includes('doctor') || types.includes('dentist') || types.includes('pharmacy') || types.includes('hospital')) catInput.value = 'Healthcare';
+          else if (types.includes('plumber') || types.includes('electrician') || types.includes('general_contractor')) catInput.value = 'Home Services';
+        }
+      }
+    });
+    input._pickAutocomplete = ac;
+  } catch(e) {
+    console.log('Pick autocomplete fallback:', e);
+  }
+}
+
 function addPick() {
   const name = document.getElementById('pick-name').value.trim();
   const cat = document.getElementById('pick-cat').value.trim();
   const note = document.getElementById('pick-note').value.trim();
   if (!name) { document.getElementById('pick-name').focus(); return; }
-  setupData.picks.push({ name, cat: cat || 'General', note });
+  setupData.picks.push({ name, cat: cat || 'General', note, place_id: pendingPickPlaceId || null });
   document.getElementById('pick-name').value = '';
   document.getElementById('pick-cat').value = '';
   document.getElementById('pick-note').value = '';
+  document.getElementById('pick-place-hint').style.display = 'none';
+  pendingPickPlaceId = null;
   renderPicks();
 }
 
@@ -898,7 +940,7 @@ async function saveAndPublish() {
     const picksRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name:"Agent's Picks", is_base: false }) });
     if (picksRes && picksRes[0]) {
       for (const p of setupData.picks) {
-        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: picksRes[0].id, name: p.name, is_agent_pick: true, agent_note: p.note }) });
+        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: picksRes[0].id, name: p.name, is_agent_pick: true, agent_note: p.note, place_id: p.place_id || null }) });
       }
     }
   }
