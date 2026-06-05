@@ -373,9 +373,12 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('profile-photo').click()" style="display:inline-flex;align-items:center;gap:6px;">
           📷 Upload photo
         </button>
-        <button id="recrop-btn" onclick="reCrop()" style="display:none;" class="btn btn-ghost btn-sm">✂️ Adjust photo</button>
         <input type="file" id="profile-photo" accept="image/*" style="display:none;" />
-        <button id="remove-photo-btn" onclick="removePhoto()" style="display:none;background:none;border:none;cursor:pointer;font-size:12px;color:var(--red);font-family:DM Sans,sans-serif;text-align:left;padding:0;">Remove photo</button>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button id="recrop-btn" onclick="reCrop()" style="display:none;background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);font-family:DM Sans,sans-serif;padding:0;">Adjust photo</button>
+          <span id="recrop-divider" style="display:none;font-size:12px;color:var(--border-strong);">|</span>
+          <button id="remove-photo-btn" onclick="removePhoto()" style="display:none;background:none;border:none;cursor:pointer;font-size:12px;color:var(--red);font-family:DM Sans,sans-serif;padding:0;">Remove photo</button>
+        </div>
         <p style="font-size:11px;color:var(--text-faint);margin:0;">Max 5MB · JPG or PNG</p>
       </div>
     </div>
@@ -1108,16 +1111,13 @@ function openCropper(src, file) {
   overlay.style.display = 'flex';
   cropImg = new Image();
   cropImg.onload = () => {
-    console.log('cropImg loaded:', cropImg.width, cropImg.height);
-    // Get the actual rendered width of the canvas container
     const containerW = Math.min(340, window.innerWidth - 80);
     const ratio = cropImg.height / cropImg.width;
-    // Set canvas CSS size
+    const containerH = Math.min(containerW * ratio, 420);
     canvas.style.width = containerW + 'px';
-    canvas.style.height = Math.min(containerW * ratio, 320) + 'px';
-    // Set actual pixel dimensions to match (no DPR scaling to keep it simple)
+    canvas.style.height = containerH + 'px';
     canvas.width = containerW;
-    canvas.height = Math.min(containerW * ratio, 320);
+    canvas.height = containerH;
     cropSize = Math.min(canvas.width, canvas.height) * 0.8;
     cropX = (canvas.width - cropSize) / 2;
     cropY = (canvas.height - cropSize) / 2;
@@ -1239,8 +1239,10 @@ function applyCrop() {
     document.getElementById('crop-overlay').style.display = 'none';
     const recropBtn = document.getElementById('recrop-btn');
     const removeBtn = document.getElementById('remove-photo-btn');
-    if (recropBtn) recropBtn.style.display = 'inline-flex';
-    if (removeBtn) removeBtn.style.display = 'block';
+    if (recropBtn) recropBtn.style.display = 'inline';
+    if (removeBtn) removeBtn.style.display = 'inline';
+    const divider = document.getElementById('recrop-divider');
+    if (divider) divider.style.display = 'inline';
   }, 'image/jpeg', 0.9);
 }
 
@@ -1302,14 +1304,17 @@ function openSettings() {
   const preview = document.getElementById('settings-avatar-preview');
   const removeBtn = document.getElementById('remove-photo-btn');
   const recropBtn = document.getElementById('recrop-btn');
+  const divider = document.getElementById('recrop-divider');
   if (currentAgent.avatar_url) {
     preview.innerHTML = `<img src="${currentAgent.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
-    if (removeBtn) removeBtn.style.display = 'block';
+    if (removeBtn) removeBtn.style.display = 'inline';
     if (recropBtn) recropBtn.style.display = 'none';
+    if (divider) divider.style.display = 'none';
   } else {
     preview.textContent = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
     if (removeBtn) removeBtn.style.display = 'none';
     if (recropBtn) recropBtn.style.display = 'none';
+    if (divider) divider.style.display = 'none';
   }
   // Reset file input
   const fileInput = document.getElementById('profile-photo');
@@ -1322,10 +1327,13 @@ function removePhoto() {
   pendingPhotoFile = null;
   const preview = document.getElementById('settings-avatar-preview');
   const removeBtn = document.getElementById('remove-photo-btn');
+  const recropBtn = document.getElementById('recrop-btn');
+  const divider = document.getElementById('recrop-divider');
   preview.innerHTML = '';
   preview.textContent = currentAgent?.name?.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || '--';
   if (removeBtn) removeBtn.style.display = 'none';
-  // Flag for removal on save
+  if (recropBtn) recropBtn.style.display = 'none';
+  if (divider) divider.style.display = 'none';
   pendingPhotoFile = 'remove';
 }
 
