@@ -179,10 +179,19 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
   <div class="auth-box">
     <p class="auth-logo">The Guide<span>.</span></p>
     <p class="auth-sub">Neighborhood guides for real estate agents</p>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-signin" onclick="showAuthTab('signin')">Sign in</button>
-      <button class="auth-tab" id="tab-signup" onclick="showAuthTab('signup')">Sign up</button>
+
+    <div id="auth-reset" style="display:none;">
+      <p style="font-size:14px;font-weight:500;margin-bottom:14px;">Set a new password</p>
+      <div class="field"><label>New password</label><input type="password" id="reset-password" placeholder="Min. 6 characters" /></div>
+      <div class="field"><label>Confirm password</label><input type="password" id="reset-confirm" placeholder="Min. 6 characters" /></div>
+      <button class="btn btn-primary btn-full" id="reset-btn" onclick="doResetPassword()">Set new password</button>
     </div>
+
+    <div id="auth-normal">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-signin" onclick="showAuthTab('signin')">Sign in</button>
+        <button class="auth-tab" id="tab-signup" onclick="showAuthTab('signup')">Sign up</button>
+      </div>
     <div id="auth-signin">
       <div class="field"><label>Email</label><input type="email" id="signin-email" placeholder="you@brokerage.com" onkeydown="if(event.key==='Enter')doSignIn()" /></div>
       <div class="field"><label>Password</label><input type="password" id="signin-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doSignIn()" /></div>
@@ -200,6 +209,7 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       <div class="field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 6 characters" onkeydown="if(event.key==='Enter')doSignUp()" /></div>
       <button class="btn btn-primary btn-full" id="signup-btn" onclick="doSignUp()">Create account</button>
     </div>
+    </div><!-- end auth-normal -->
     <p class="auth-error" id="auth-error"></p>
   </div>
 </div>
@@ -510,6 +520,26 @@ async function doSignUp() {
     console.error(e);
   } finally {
     btn.disabled = false; btn.textContent = 'Create account';
+  }
+}
+
+async function doResetPassword() {
+  const btn = document.getElementById('reset-btn');
+  const password = document.getElementById('reset-password').value;
+  const confirm = document.getElementById('reset-confirm').value;
+  if (!password || password.length < 6) { setAuthError('Password must be at least 6 characters.'); return; }
+  if (password !== confirm) { setAuthError('Passwords do not match.'); return; }
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const { error } = await getSB().auth.updateUser({ password });
+    if (error) { setAuthError(error.message); return; }
+    showToast('Password updated! Please sign in.');
+    document.getElementById('auth-reset').style.display = 'none';
+    document.getElementById('auth-normal').style.display = 'block';
+  } catch(e) {
+    setAuthError('Something went wrong. Try again.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Set new password';
   }
 }
 
@@ -1157,6 +1187,19 @@ function showToast(msg) {
 }
 
 window.addEventListener('load', function() {
+  // Check for password reset token in URL hash
+  const hash = window.location.hash;
+  if (hash && hash.includes('type=recovery')) {
+    getSB().auth.getSession().then(({ data }) => {
+      if (data.session) {
+        currentUser = { access_token: data.session.access_token, user: data.session.user };
+        showScreen('auth');
+        document.getElementById('auth-reset').style.display = 'block';
+        document.getElementById('auth-normal').style.display = 'none';
+      }
+    });
+    return;
+  }
   // Initialize Google Places Autocomplete
   if (window.google && window.google.maps) {
     initAutocomplete();
