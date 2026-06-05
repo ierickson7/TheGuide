@@ -190,11 +190,12 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
     </div>
     <div id="auth-signup" style="display:none;">
       <div class="field-row">
-        <div class="field"><label>First name</label><input type="text" id="signup-first" placeholder="Kurt" /></div>
-        <div class="field"><label>Last name</label><input type="text" id="signup-last" placeholder="Genkin" /></div>
+        <div class="field"><label>First name</label><input type="text" id="signup-first" placeholder="" /></div>
+        <div class="field"><label>Last name</label><input type="text" id="signup-last" placeholder="" /></div>
       </div>
-      <div class="field"><label>Brokerage</label><input type="text" id="signup-brokerage" placeholder="Ensemble Real Estate" /></div>
-      <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@brokerage.com" /></div>
+      <div class="field"><label>Brokerage</label><input type="text" id="signup-brokerage" placeholder="" /></div>
+      <div class="field"><label>Phone</label><input type="tel" id="signup-phone" placeholder="" /></div>
+      <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="" /></div>
       <div class="field"><label>Password</label><input type="password" id="signup-password" placeholder="Min. 6 characters" onkeydown="if(event.key==='Enter')doSignUp()" /></div>
       <button class="btn btn-primary btn-full" id="signup-btn" onclick="doSignUp()">Create account</button>
     </div>
@@ -216,6 +217,31 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       <div class="dash-stat"><div class="dash-stat-val" id="stat-live">0</div><div class="dash-stat-label">Live</div></div>
       <div class="dash-stat"><div class="dash-stat-val" id="stat-views">0</div><div class="dash-stat-label">Views</div></div>
       <div class="dash-stat"><div class="dash-stat-val" id="stat-drafts">0</div><div class="dash-stat-label">Drafts</div></div>
+    </div>
+    <div id="profile-banner" style="display:none;background:rgba(57,8,58,0.06);border:0.5px solid rgba(57,8,58,0.15);border-radius:var(--radius);padding:12px 16px;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <p style="font-size:13px;color:var(--deep);margin:0;">Add your phone number so clients can contact you from their guide.</p>
+      <button class="btn btn-primary btn-sm" onclick="toggleProfileEdit(true)">Add phone</button>
+    </div>
+    <div id="profile-edit" style="display:none;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.25rem;">
+      <p style="font-size:14px;font-weight:500;margin-bottom:12px;">Your profile</p>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;">
+        <div id="profile-avatar-preview" style="width:64px;height:64px;border-radius:50%;background:var(--deep);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:var(--cream);flex-shrink:0;overflow:hidden;"></div>
+        <div>
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            📷 Upload photo
+            <input type="file" id="profile-photo" accept="image/*" style="display:none;" onchange="previewPhoto(this)" />
+          </label>
+          <p style="font-size:11px;color:var(--text-faint);margin-top:6px;">Max 5MB · JPG or PNG</p>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Phone</label><input type="tel" id="profile-phone" placeholder="" /></div>
+        <div class="field"><label>Brokerage</label><input type="text" id="profile-brokerage" placeholder="" /></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" onclick="toggleProfileEdit(false)">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="save-profile-btn" onclick="saveProfile()">Save</button>
+      </div>
     </div>
     <div class="dash-toolbar">
       <div class="dash-filters">
@@ -439,6 +465,7 @@ async function doSignUp() {
   const first = document.getElementById('signup-first').value.trim();
   const last = document.getElementById('signup-last').value.trim();
   const brokerage = document.getElementById('signup-brokerage').value.trim();
+  const phone = document.getElementById('signup-phone').value.trim();
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   if (!first || !email || !password) { setAuthError('Please fill in all required fields.'); return; }
@@ -459,7 +486,7 @@ async function doSignUp() {
     localStorage.setItem('tg_session', JSON.stringify(currentUser));
     await dbFetch('agents', {
       method: 'POST',
-      body: JSON.stringify({ id: data.user.id, name: (first + ' ' + last).trim(), brokerage, email })
+      body: JSON.stringify({ id: data.user.id, name: (first + ' ' + last).trim(), brokerage, email, phone: phone || null })
     });
     await loadAgent().catch(e => console.error('loadAgent failed:', e));
     showScreen('dashboard');
@@ -487,7 +514,13 @@ async function loadAgent() {
   if (data && data[0]) {
     currentAgent = data[0];
     const initials = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-    document.getElementById('nav-initials').textContent = initials;
+    const navAvatar = document.getElementById('nav-initials');
+    if (currentAgent.avatar_url) {
+      navAvatar.innerHTML = `<img src="${currentAgent.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+      navAvatar.textContent = '';
+    } else {
+      navAvatar.textContent = initials;
+    }
     document.getElementById('nav-name').textContent = currentAgent.name;
   }
 }
@@ -507,6 +540,9 @@ function renderDashboard() {
   document.getElementById('stat-live').textContent = live;
   document.getElementById('stat-drafts').textContent = drafts;
   document.getElementById('stat-views').textContent = guides.reduce((a,g) => a + (g.views||0), 0);
+  // Show profile banner if phone is missing
+  const banner = document.getElementById('profile-banner');
+  if (banner) banner.style.display = (!currentAgent?.phone) ? 'flex' : 'none';
   const filtered = guideFilter === 'all' ? guides : guides.filter(g => g.status === guideFilter);
   const el = document.getElementById('guide-list');
   if (!filtered.length) {
@@ -807,13 +843,40 @@ async function renderClientGuide(guide, isAgent) {
   const agentData = await dbFetch('agents?id=eq.' + guide.agent_id + '&select=*');
   const agent = agentData && agentData[0] ? agentData[0] : { name:'Your Agent', brokerage:'' };
   const initials = agent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  const guideAvatar = document.getElementById('guide-avatar');
+  if (agent.avatar_url) {
+    guideAvatar.innerHTML = `<img src="${agent.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+    guideAvatar.textContent = '';
+  } else {
+    guideAvatar.textContent = initials;
+  }
   document.getElementById('guide-location').textContent = 'Welcome to ' + (guide.neighborhood || guide.zip);
   document.getElementById('guide-zip-text').textContent = guide.zip + ' · ' + (guide.neighborhood||'') + ' · Your personalized local guide';
   document.getElementById('guide-avatar').textContent = initials;
   document.getElementById('guide-agent-name').textContent = agent.name;
   document.getElementById('guide-agent-sub').textContent = (agent.brokerage||'') + ' · Your agent';
   document.getElementById('guide-updated-time').textContent = 'Updated ' + timeAgo(guide.updated_at);
-  if (agent.phone) document.getElementById('guide-call-btn').onclick = () => window.open('tel:' + agent.phone);
+
+  // Wire up contact button
+  const contactBtn = document.getElementById('guide-call-btn');
+  if (agent.phone || agent.email) {
+    contactBtn.style.display = 'block';
+    contactBtn.onclick = () => {
+      if (agent.phone && agent.email) {
+        // Show both options
+        const choice = confirm('Call ' + agent.name + '?\n\nOK = Call\nCancel = Email instead');
+        if (choice) window.open('tel:' + agent.phone);
+        else window.open('mailto:' + agent.email);
+      } else if (agent.phone) {
+        window.open('tel:' + agent.phone);
+      } else {
+        window.open('mailto:' + agent.email);
+      }
+    };
+    contactBtn.textContent = agent.phone ? 'Call' : 'Email';
+  } else {
+    contactBtn.style.display = 'none';
+  }
 
   // Show back button for agents previewing their own guide
   let backBtn = document.getElementById('guide-back-btn');
@@ -945,6 +1008,95 @@ function initAutocomplete() {
     console.log('PlaceAutocompleteElement not available, falling back:', e);
     // Fallback — just use plain input, no autocomplete
   }
+}
+
+let pendingPhotoFile = null;
+
+function previewPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5MB'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('profile-avatar-preview');
+    preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;" />`;
+    pendingPhotoFile = file;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function compressImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxSize = 400;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > maxSize) { h *= maxSize/w; w = maxSize; } }
+      else { if (h > maxSize) { w *= maxSize/h; h = maxSize; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => { URL.revokeObjectURL(url); resolve(blob); }, 'image/jpeg', 0.85);
+    };
+    img.src = url;
+  });
+}
+
+async function uploadPhoto() {
+  if (!pendingPhotoFile || !currentUser) return null;
+  const compressed = await compressImage(pendingPhotoFile);
+  const fileName = currentUser.user.id + '.jpg';
+  const res = await fetch(SUPA_URL + '/storage/v1/object/avatars/' + fileName, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + currentUser.access_token,
+      'Content-Type': 'image/jpeg',
+      'x-upsert': 'true'
+    },
+    body: compressed
+  });
+  if (!res.ok) { console.error('Photo upload failed:', res.status); return null; }
+  return SUPA_URL + '/storage/v1/object/public/avatars/' + fileName + '?t=' + Date.now();
+}
+
+function toggleProfileEdit(show) {
+  document.getElementById('profile-edit').style.display = show ? 'block' : 'none';
+  document.getElementById('profile-banner').style.display = show ? 'none' : (!currentAgent?.phone ? 'flex' : 'none');
+  if (show && currentAgent) {
+    document.getElementById('profile-phone').value = currentAgent.phone || '';
+    document.getElementById('profile-brokerage').value = currentAgent.brokerage || '';
+    const preview = document.getElementById('profile-avatar-preview');
+    if (currentAgent.avatar_url) {
+      preview.innerHTML = `<img src="${currentAgent.avatar_url}" style="width:100%;height:100%;object-fit:cover;" />`;
+    } else {
+      const initials = currentAgent.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+      preview.textContent = initials;
+    }
+    pendingPhotoFile = null;
+  }
+}
+
+async function saveProfile() {
+  const btn = document.getElementById('save-profile-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const phone = document.getElementById('profile-phone').value.trim();
+  const brokerage = document.getElementById('profile-brokerage').value.trim();
+  let avatar_url = currentAgent?.avatar_url || null;
+  if (pendingPhotoFile) {
+    const url = await uploadPhoto();
+    if (url) avatar_url = url;
+  }
+  await dbFetch('agents?id=eq.' + currentUser.user.id, {
+    method: 'PATCH',
+    body: JSON.stringify({ phone: phone || null, brokerage: brokerage || null, avatar_url })
+  });
+  await loadAgent();
+  toggleProfileEdit(false);
+  pendingPhotoFile = null;
+  btn.disabled = false; btn.textContent = 'Save';
+  showToast('Profile updated!');
 }
 
 function showScreen(name) {
