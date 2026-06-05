@@ -1021,7 +1021,7 @@ async function renderClientGuide(guide, isAgent) {
   document.getElementById('guide-agent-sub').textContent = (agent.brokerage||'') + ' · Your agent';
   document.getElementById('guide-updated-time').textContent = 'Updated ' + timeAgo(guide.updated_at);
 
-  const firstName = firstName;
+  const firstName = agent.name.split(' ')[0];
 
   // Wire up contact button
   const contactBtn = document.getElementById('guide-call-btn');
