@@ -1086,17 +1086,20 @@ let cropImg = null;
 let cropX = 0, cropY = 0, cropSize = 0, isDragging = false, dragStartX = 0, dragStartY = 0;
 
 function previewPhoto(input) {
+  console.log('previewPhoto called', input.files);
   const file = input.files[0];
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5MB'); return; }
   const reader = new FileReader();
-  reader.onload = (e) => { openCropper(e.target.result, file); };
+  reader.onload = (e) => { console.log('FileReader loaded, opening cropper'); openCropper(e.target.result, file); };
   reader.readAsDataURL(file);
 }
 
 function openCropper(src, file) {
+  console.log('openCropper called');
   const overlay = document.getElementById('crop-overlay');
   const canvas = document.getElementById('crop-canvas');
+  console.log('overlay:', overlay, 'canvas:', canvas);
   overlay.style.display = 'flex';
   cropImg = new Image();
   cropImg.onload = () => {
