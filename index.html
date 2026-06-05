@@ -943,7 +943,7 @@ async function saveAndPublish() {
     const picksRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name:"Agent's Picks", is_base: false }) });
     if (picksRes && picksRes[0]) {
       for (const p of setupData.picks) {
-        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: picksRes[0].id, name: p.name, is_agent_pick: true, agent_note: p.note, place_id: p.place_id || null }) });
+        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: picksRes[0].id, name: p.name, is_agent_pick: true, agent_note: p.note, place_id: p.place_id || null, address: p.cat || null }) });
       }
     }
   }
@@ -1090,7 +1090,7 @@ async function renderClientGuide(guide, isAgent) {
           <div class="guide-pick-card" style="cursor:pointer;">
             <div class="guide-pick-badge" style="display:flex;align-items:center;justify-content:center;">⭐</div>
             <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">
-              <p class="guide-pick-name">${cleanName}</p>
+              <p class="guide-pick-name">${cleanName}${v.address ? `<span style="font-size:11px;font-weight:400;color:var(--text-faint);margin-left:6px;">· ${v.address}</span>` : ''}</p>
               ${v.agent_note?`<p class="guide-pick-note">"${v.agent_note}"</p>`:''}
               <p class="guide-pick-stars" style="display:flex;align-items:center;gap:6px;">
                 ${v.rating?`<span>${stars(v.rating)} · ${v.rating} on Google</span>`:''}
