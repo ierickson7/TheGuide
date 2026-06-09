@@ -343,7 +343,11 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       <p class="guide-zip-text" id="guide-zip-text"></p>
       <div class="guide-agent-row">
         <div class="guide-avatar" id="guide-avatar">--</div>
-        <div><p class="guide-agent-name" id="guide-agent-name"></p><p class="guide-agent-sub" id="guide-agent-sub"></p></div>
+        <div>
+          <p style="font-size:10px;color:rgba(250,245,231,0.45);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 2px;">Your Agent</p>
+          <p class="guide-agent-name" id="guide-agent-name"></p>
+          <p class="guide-agent-sub" id="guide-agent-sub"></p>
+        </div>
         <button class="guide-call-btn" id="guide-call-btn">Contact</button>
       </div>
     </div>
@@ -1065,30 +1069,17 @@ async function renderClientGuide(guide, isAgent) {
   document.getElementById('guide-location').textContent = 'Welcome to ' + (guide.neighborhood || guide.zip);
   document.getElementById('guide-zip-text').textContent = guide.zip + ' · ' + (guide.neighborhood||'') + ' · Your personalized local guide';
   document.getElementById('guide-agent-name').textContent = agent.name;
-  document.getElementById('guide-agent-sub').textContent = (agent.brokerage||'') + ' · Your agent';
+  document.getElementById('guide-agent-sub').textContent = (agent.brokerage ? agent.brokerage : '');
   document.getElementById('guide-updated-time').textContent = 'Updated ' + timeAgo(guide.updated_at);
 
   const firstName = agent.name.split(' ')[0];
 
   // Wire up contact button
   const contactBtn = document.getElementById('guide-call-btn');
-  if (agent.phone || agent.email) {
-    contactBtn.textContent = 'Contact';
+  if (agent.email) {
+    contactBtn.textContent = 'Email';
     contactBtn.style.display = 'block';
-    contactBtn.style.cssText = '';
-    contactBtn.innerHTML = '';
-    contactBtn.textContent = 'Contact';
-    contactBtn.onclick = () => {
-      if (agent.phone && agent.email) {
-        const choice = confirm('How would you like to reach ' + agent.name + '?\n\nOK = Call\nCancel = Email');
-        if (choice) window.open('tel:' + agent.phone);
-        else window.open('mailto:' + agent.email);
-      } else if (agent.phone) {
-        window.open('tel:' + agent.phone);
-      } else {
-        window.open('mailto:' + agent.email);
-      }
-    };
+    contactBtn.onclick = () => window.open('mailto:' + agent.email);
   } else {
     contactBtn.style.display = 'none';
   }
