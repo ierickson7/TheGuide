@@ -942,7 +942,9 @@ async function saveAndPublish() {
   }
   const agentSlug = (currentAgent?.name || 'agent').toLowerCase().replace(/\s+/g,'-');
   const hoodSlug = setupData.neighborhood.toLowerCase().replace(/\s+/g,'-');
-  const slug = agentSlug + '-' + hoodSlug + '-' + setupData.zip;
+  const baseSlug = agentSlug + '-' + hoodSlug + '-' + setupData.zip;
+  // Add unique suffix if editing, use base slug for new guides (timestamp ensures uniqueness)
+  const slug = setupData.guideId ? baseSlug : baseSlug + '-' + Date.now().toString(36);
   const emoji = getNeighborhoodEmoji(setupData.neighborhood);
 
   let guideId = setupData.guideId;
@@ -1071,11 +1073,14 @@ async function renderClientGuide(guide, isAgent) {
   // Wire up contact button
   const contactBtn = document.getElementById('guide-call-btn');
   if (agent.phone || agent.email) {
+    contactBtn.textContent = 'Contact';
     contactBtn.style.display = 'block';
+    contactBtn.style.cssText = '';
+    contactBtn.innerHTML = '';
+    contactBtn.textContent = 'Contact';
     contactBtn.onclick = () => {
       if (agent.phone && agent.email) {
-        // Show both options
-        const choice = confirm('Call ' + agent.name + '?\n\nOK = Call\nCancel = Email instead');
+        const choice = confirm('How would you like to reach ' + agent.name + '?\n\nOK = Call\nCancel = Email');
         if (choice) window.open('tel:' + agent.phone);
         else window.open('mailto:' + agent.email);
       } else if (agent.phone) {
@@ -1084,7 +1089,6 @@ async function renderClientGuide(guide, isAgent) {
         window.open('mailto:' + agent.email);
       }
     };
-    contactBtn.textContent = agent.phone ? 'Call' : 'Email';
   } else {
     contactBtn.style.display = 'none';
   }
@@ -1206,6 +1210,7 @@ async function addCustomCategory() {
 
   // Auto-fetch places for this category
   const location = setupData.address || setupData.zip || setupData.neighborhood;
+  console.log('Custom cat location:', location, 'category:', name);
   if (location) {
     try {
       const res = await fetch(SUPA_URL + '/functions/v1/smart-worker', {
@@ -1213,10 +1218,14 @@ async function addCustomCategory() {
         headers: { 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: location, customCategory: name })
       });
+      console.log('Custom cat response status:', res.status);
       const data = await res.json();
+      console.log('Custom cat data:', data);
       if (data.places && data.places.length) {
         cat.vendors = data.places;
         showToast('Found ' + data.places.length + ' places for "' + name + '"');
+      } else {
+        showToast('No places found for "' + name + '" — add manually');
       }
     } catch(e) {
       console.error('Custom cat fetch failed:', e);
