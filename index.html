@@ -311,7 +311,7 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       </div>
       <div class="setup-actions">
         <button class="btn btn-ghost btn-sm" onclick="goSetupStep(2)">Back</button>
-        <button class="btn btn-primary" onclick="saveAndPublish()">Publish guide →</button>
+        <button class="btn btn-primary" onclick="saveAndPublish()">Publish Guide →</button>
       </div>
     </div>
     <div class="setup-step" id="setup-step-4">
@@ -914,6 +914,24 @@ async function editGuide(guideId) {
   document.querySelector('#screen-setup .nav-logo').textContent = 'Editing: ' + guide.neighborhood;
 }
 
+function getNeighborhoodEmoji(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('beach') || n.includes('alki')) return '🏖️';
+  if (n.includes('park') || n.includes('green') || n.includes('forest')) return '🌿';
+  if (n.includes('hill') || n.includes('heights')) return '⛰️';
+  if (n.includes('lake') || n.includes('water') || n.includes('bay')) return '💧';
+  if (n.includes('fremont') || n.includes('ballard') || n.includes('anchor')) return '⚓';
+  if (n.includes('downtown') || n.includes('central') || n.includes('city')) return '🏙️';
+  if (n.includes('north') || n.includes('gate')) return '🧭';
+  if (n.includes('west')) return '🌅';
+  if (n.includes('east')) return '🌄';
+  if (n.includes('south')) return '🌆';
+  if (n.includes('queen')) return '👑';
+  if (n.includes('columbia') || n.includes('river')) return '🌊';
+  if (n.includes('market')) return '🛒';
+  return '🏡';
+}
+
 async function saveAndPublish() {
   if (!currentUser) return;
   // Check for unsaved pick in input field
@@ -922,27 +940,10 @@ async function saveAndPublish() {
     const confirm = window.confirm('You have an unsaved pick "' + pickNameInput.value.trim() + '" — add it before publishing?');
     if (confirm) { addPick(); }
   }
-  function getNeighborhoodEmoji(name) {
-    const n = (name || '').toLowerCase();
-    if (n.includes('beach') || n.includes('alki')) return '🏖️';
-    if (n.includes('park') || n.includes('green') || n.includes('forest')) return '🌿';
-    if (n.includes('hill') || n.includes('heights')) return '⛰️';
-    if (n.includes('lake') || n.includes('water') || n.includes('bay')) return '💧';
-    if (n.includes('fremont') || n.includes('ballard') || n.includes('anchor')) return '⚓';
-    if (n.includes('downtown') || n.includes('central') || n.includes('city')) return '🏙️';
-    if (n.includes('north') || n.includes('gate')) return '🧭';
-    if (n.includes('west')) return '🌅';
-    if (n.includes('east')) return '🌄';
-    if (n.includes('south')) return '🌆';
-    if (n.includes('queen')) return '👑';
-    if (n.includes('columbia') || n.includes('river')) return '🌊';
-    if (n.includes('market')) return '🛒';
-    return '🏡';
-  }
-
-  const emoji = getNeighborhoodEmoji(setupData.neighborhood);
+  const agentSlug = (currentAgent?.name || 'agent').toLowerCase().replace(/\s+/g,'-');
   const hoodSlug = setupData.neighborhood.toLowerCase().replace(/\s+/g,'-');
   const slug = agentSlug + '-' + hoodSlug + '-' + setupData.zip;
+  const emoji = getNeighborhoodEmoji(setupData.neighborhood);
 
   let guideId = setupData.guideId;
 
@@ -1216,21 +1217,78 @@ function renderCustomCats() {
     return;
   }
   el.innerHTML = setupData.customCats.map((c, i) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px;background:rgba(57,8,58,0.04);border-radius:var(--radius);margin-bottom:6px;">
-      <span style="font-size:18px;">${c.emoji}</span>
-      <span style="font-size:13px;font-weight:500;flex:1;">${c.name}</span>
-      <span style="font-size:11px;color:var(--text-faint);">${c.vendors.length} place${c.vendors.length!==1?'s':''}</span>
-      <button onclick="openCustomCatEdit(${i})" style="font-size:11px;color:var(--deep);background:none;border:none;cursor:pointer;font-family:DM Sans,sans-serif;">Add places</button>
-      <button onclick="removeCustomCategory(${i})" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:16px;line-height:1;">×</button>
+    <div style="background:rgba(57,8,58,0.04);border-radius:var(--radius);margin-bottom:8px;padding:10px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">${c.emoji}</span>
+        <span style="font-size:13px;font-weight:500;flex:1;">${c.name}</span>
+        <span style="font-size:11px;color:var(--text-faint);">${c.vendors.length} place${c.vendors.length!==1?'s':''}</span>
+        <button onclick="openCustomCatEdit(${i})" style="font-size:11px;color:var(--deep);background:none;border:none;cursor:pointer;font-family:DM Sans,sans-serif;">+ Add place</button>
+        <button onclick="removeCustomCategory(${i})" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:16px;line-height:1;">×</button>
+      </div>
+      ${c.vendors.length ? `<div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);">
+        ${c.vendors.map((v,vi) => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--text-muted);">
+          <span>${c.emoji}</span><span style="flex:1;">${v.name}</span>
+          <button onclick="removeCustomVendor(${i},${vi})" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:14px;line-height:1;">×</button>
+        </div>`).join('')}
+      </div>` : ''}
+      <div id="custom-cat-edit-${i}" style="display:none;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);">
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="custom-vendor-input-${i}" placeholder="Search for a business..." autocomplete="off" style="flex:1;font-size:13px;" />
+          <button class="btn btn-primary btn-sm" onclick="addCustomCatVendor(${i})">Add</button>
+        </div>
+      </div>
     </div>`).join('');
+  // Init autocomplete for any visible inputs
+  setupData.customCats.forEach((_, i) => {
+    const inp = document.getElementById('custom-vendor-input-' + i);
+    if (inp) setTimeout(() => initCustomCatAutocomplete(i), 100);
+  });
+}
+
+function removeCustomVendor(catI, vendorI) {
+  setupData.customCats[catI].vendors.splice(vendorI, 1);
+  renderCustomCats();
 }
 
 function openCustomCatEdit(i) {
   const cat = setupData.customCats[i];
-  const name = prompt('Add a place to "' + cat.name + '":\n(Type a business name)', '');
-  if (!name) return;
-  cat.vendors.push({ name: name.trim(), r: null, address: null, place_id: null });
+  // Show inline input below this category
+  const el = document.getElementById('custom-cat-edit-' + i);
+  if (el) { el.style.display = el.style.display === 'none' ? 'block' : 'none'; return; }
   renderCustomCats();
+}
+
+function addCustomCatVendor(i) {
+  const input = document.getElementById('custom-vendor-input-' + i);
+  if (!input || !input.value.trim()) return;
+  const name = input.value.split(',')[0].trim();
+  const placeId = input._placeId || null;
+  setupData.customCats[i].vendors.push({ name, r: null, address: null, place_id: placeId });
+  input.value = '';
+  input._placeId = null;
+  renderCustomCats();
+  // Re-init autocomplete for this input
+  setTimeout(() => initCustomCatAutocomplete(i), 100);
+}
+
+function initCustomCatAutocomplete(i) {
+  const input = document.getElementById('custom-vendor-input-' + i);
+  if (!input || !window.google?.maps?.places) return;
+  if (input._ac) return;
+  try {
+    const ac = new window.google.maps.places.Autocomplete(input, {
+      types: ['establishment'],
+      fields: ['name', 'place_id']
+    });
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace();
+      if (place.place_id) {
+        input.value = place.name;
+        input._placeId = place.place_id;
+      }
+    });
+    input._ac = ac;
+  } catch(e) {}
 }
 
 function stars(n) {
