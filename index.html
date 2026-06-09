@@ -1191,17 +1191,39 @@ function selectCustomEmoji(e) {
   renderCustomEmojiPicker();
 }
 
-function addCustomCategory() {
+async function addCustomCategory() {
   const name = document.getElementById('custom-cat-name').value.trim();
   if (!name) { document.getElementById('custom-cat-name').focus(); return; }
   if (setupData.customCats.find(c => c.name.toLowerCase() === name.toLowerCase())) {
     showToast('Category already exists'); return;
   }
-  setupData.customCats.push({ name, emoji: selectedCustomEmoji, vendors: [] });
+  const cat = { name, emoji: selectedCustomEmoji, vendors: [], loading: true };
+  setupData.customCats.push(cat);
   document.getElementById('custom-cat-name').value = '';
   selectedCustomEmoji = CUSTOM_CAT_EMOJIS[0];
   renderCustomEmojiPicker();
   renderCustomCats();
+
+  // Auto-fetch places for this category
+  const location = setupData.address || setupData.zip || setupData.neighborhood;
+  if (location) {
+    try {
+      const res = await fetch(SUPA_URL + '/functions/v1/smart-worker', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: location, customCategory: name })
+      });
+      const data = await res.json();
+      if (data.places && data.places.length) {
+        cat.vendors = data.places;
+        showToast('Found ' + data.places.length + ' places for "' + name + '"');
+      }
+    } catch(e) {
+      console.error('Custom cat fetch failed:', e);
+    }
+    cat.loading = false;
+    renderCustomCats();
+  }
 }
 
 function removeCustomCategory(i) {
@@ -1221,7 +1243,7 @@ function renderCustomCats() {
       <div style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:18px;">${c.emoji}</span>
         <span style="font-size:13px;font-weight:500;flex:1;">${c.name}</span>
-        <span style="font-size:11px;color:var(--text-faint);">${c.vendors.length} place${c.vendors.length!==1?'s':''}</span>
+        <span style="font-size:11px;color:var(--text-faint);">${c.loading ? '⏳ Loading...' : c.vendors.length + ' place' + (c.vendors.length!==1?'s':'')}</span>
         <button onclick="openCustomCatEdit(${i})" style="font-size:11px;color:var(--deep);background:none;border:none;cursor:pointer;font-family:DM Sans,sans-serif;">+ Add place</button>
         <button onclick="removeCustomCategory(${i})" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:16px;line-height:1;">×</button>
       </div>
