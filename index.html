@@ -1110,7 +1110,7 @@ async function renderClientGuide(guide, isAgent) {
   const catKeys = Object.keys(catData);
   function renderCats() {
     document.getElementById('guide-cats').innerHTML = catKeys.map((c, i) =>
-      `<button class="guide-cat-btn${c===activeCat?' active':''}" onclick="guideCatClick(${i})">${c}</button>`
+      `<button class="guide-cat-btn${c===activeCat?' active':''}" onclick="guideCatClick(${i})">${c.charAt(0).toUpperCase() + c.slice(1)}</button>`
     ).join('');
     renderCatContent();
   }
