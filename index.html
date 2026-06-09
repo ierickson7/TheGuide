@@ -279,7 +279,18 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       <h2 style="font-family:'Playfair Display',serif;font-weight:400;font-size:20px;margin-bottom:6px;">Review results</h2>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:1.25rem;">Remove anything you don't want clients to see.</p>
       <div id="review-list"></div>
-      <div class="setup-actions">
+      <hr style="border:none;border-top:0.5px solid var(--border);margin:1.25rem 0;">
+      <p style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Custom categories</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Add your own categories beyond the defaults — Dog-Friendly Spots, Breweries, Date Night, etc.</p>
+      <div id="custom-cats-list"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+        <div id="custom-cat-emoji-picker" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <input type="text" id="custom-cat-name" placeholder="e.g. Dog-Friendly Spots" style="flex:1;" />
+        <button class="btn btn-primary btn-sm" onclick="addCustomCategory()">+ Add</button>
+      </div>
+      <div class="setup-actions" style="margin-top:1.25rem;">
         <button class="btn btn-ghost btn-sm" onclick="goSetupStep(1)">Back</button>
         <button class="btn btn-primary" onclick="goSetupStep(3);renderPicks()">Add my picks →</button>
       </div>
@@ -595,7 +606,7 @@ async function loadAgent() {
     if (currentAgent.avatar_url) {
       navAvatar.style.overflow = 'hidden';
       navAvatar.style.padding = '0';
-      navAvatar.innerHTML = `<img src="${currentAgent.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />`;
+      navAvatar.innerHTML = `<img src="${currentAgent.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" onerror="this.parentElement.textContent='${initials}'" />`;
     } else {
       navAvatar.innerHTML = '';
       navAvatar.textContent = initials;
@@ -673,7 +684,7 @@ async function confirmDelete() {
 }
 
 function startNewGuide() {
-  setupData = { zip: '', address: '', neighborhood: '', vendors: {}, removed: {}, picks: [], guideId: null };
+  setupData = { zip: '', address: '', neighborhood: '', vendors: {}, removed: {}, picks: [], guideId: null, customCats: [] };
   goSetupStep(1);
   showScreen('setup');
   const logo = document.querySelector('#screen-setup .nav-logo');
@@ -691,6 +702,7 @@ function goSetupStep(n) {
     else if (i === n) el.classList.add('active');
   }
   if (n === 3) setTimeout(initPickAutocomplete, 100);
+  if (n === 2) { renderCustomEmojiPicker(); renderCustomCats(); }
 }
 
 function startZipLookup() {
@@ -910,7 +922,25 @@ async function saveAndPublish() {
     const confirm = window.confirm('You have an unsaved pick "' + pickNameInput.value.trim() + '" — add it before publishing?');
     if (confirm) { addPick(); }
   }
-  const agentSlug = (currentAgent?.name || 'agent').toLowerCase().replace(/\s+/g,'-');
+  function getNeighborhoodEmoji(name) {
+    const n = (name || '').toLowerCase();
+    if (n.includes('beach') || n.includes('alki')) return '🏖️';
+    if (n.includes('park') || n.includes('green') || n.includes('forest')) return '🌿';
+    if (n.includes('hill') || n.includes('heights')) return '⛰️';
+    if (n.includes('lake') || n.includes('water') || n.includes('bay')) return '💧';
+    if (n.includes('fremont') || n.includes('ballard') || n.includes('anchor')) return '⚓';
+    if (n.includes('downtown') || n.includes('central') || n.includes('city')) return '🏙️';
+    if (n.includes('north') || n.includes('gate')) return '🧭';
+    if (n.includes('west')) return '🌅';
+    if (n.includes('east')) return '🌄';
+    if (n.includes('south')) return '🌆';
+    if (n.includes('queen')) return '👑';
+    if (n.includes('columbia') || n.includes('river')) return '🌊';
+    if (n.includes('market')) return '🛒';
+    return '🏡';
+  }
+
+  const emoji = getNeighborhoodEmoji(setupData.neighborhood);
   const hoodSlug = setupData.neighborhood.toLowerCase().replace(/\s+/g,'-');
   const slug = agentSlug + '-' + hoodSlug + '-' + setupData.zip;
 
@@ -926,7 +956,7 @@ async function saveAndPublish() {
     });
   } else {
     // New guide
-    const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji:'📍', status:'live', slug }) });
+    const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji, status:'live', slug }) });
     if (!guideRes || !guideRes[0]) { showToast('Error saving guide'); return; }
     guideId = guideRes[0].id;
   }
@@ -944,6 +974,16 @@ async function saveAndPublish() {
     if (picksRes && picksRes[0]) {
       for (const p of setupData.picks) {
         await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: picksRes[0].id, name: p.name, is_agent_pick: true, agent_note: p.note, place_id: p.place_id || null, address: p.cat || null }) });
+      }
+    }
+  }
+  // Save custom categories
+  if (setupData.customCats && setupData.customCats.length) {
+    for (const cc of setupData.customCats) {
+      const ccRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name: cc.name, emoji: cc.emoji, is_base: true, sort_order: 99 }) });
+      if (!ccRes || !ccRes[0]) continue;
+      for (const v of cc.vendors) {
+        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: ccRes[0].id, name: v.name, rating: v.r || null, address: v.address || null, place_id: v.place_id || null }) });
       }
     }
   }
@@ -1065,9 +1105,10 @@ async function renderClientGuide(guide, isAgent) {
   const catData = {};
   for (const cat of cats) {
     const vendors = await dbFetch('vendors?category_id=eq.' + cat.id + '&order=rating.desc&select=*');
-    // Rename "Agent's Picks" to "[First name]'s Picks"
-    const displayName = !cat.is_base ? firstName + "'s Picks" : cat.name;
-    catData[displayName] = { vendors: vendors||[], isPicks: !cat.is_base };
+    const isPicksCat = !cat.is_base && cat.name.includes("Picks");
+    const isCustom = !cat.is_base && !cat.name.includes("Picks");
+    const displayName = isPicksCat ? firstName + "'s Picks" : cat.name;
+    catData[displayName] = { vendors: vendors||[], isPicks: isPicksCat, isCustom, emoji: cat.emoji || null };
   }
   let activeCat = Object.keys(catData)[0];
   const catKeys = Object.keys(catData);
@@ -1101,12 +1142,14 @@ async function renderClientGuide(guide, isAgent) {
         </a>`;
       });
     } else {
-      html += `<p class="section-label">Top rated in ${activeCat.toLowerCase()}</p><div class="guide-tile-list">`;
+      const emoji = cat.emoji || '📍';
+      const label = cat.isCustom ? activeCat : 'Top rated in ' + activeCat.toLowerCase();
+      html += `<p class="section-label">${label}</p><div class="guide-tile-list">`;
       cat.vendors.forEach(v => {
         const mapsUrl = v.place_id ? 'https://www.google.com/maps/place/?q=place_id:' + v.place_id : 'https://maps.google.com/?q=' + encodeURIComponent(v.name + ' ' + (guide.neighborhood||guide.zip));
         html += `<a href="${mapsUrl}" target="_blank" rel="noopener" style="text-decoration:none;display:block;">
           <div class="guide-tile" style="cursor:pointer;">
-            <span class="guide-tile-emoji">📍</span>
+            <span class="guide-tile-emoji">${emoji}</span>
             <div style="flex:1;min-width:0;">
               <p class="guide-tile-name">${v.name}</p>
               ${v.address?`<p class="guide-tile-meta">${v.address}</p>`:''}
@@ -1128,6 +1171,66 @@ async function renderClientGuide(guide, isAgent) {
     document.getElementById('guide-content').innerHTML = html;
   }
   renderCats();
+}
+
+// ==================== CUSTOM CATEGORIES ====================
+const CUSTOM_CAT_EMOJIS = ['🐶','🍺','🎨','🏋️','📚','🎵','🛒','🏄','🚲','🧘','🍕','🎭','🏊','🌮','🎪','🍷','🌿','🎯','🏕️','🎸'];
+let selectedCustomEmoji = CUSTOM_CAT_EMOJIS[0];
+
+function renderCustomEmojiPicker() {
+  const el = document.getElementById('custom-cat-emoji-picker');
+  if (!el) return;
+  el.innerHTML = CUSTOM_CAT_EMOJIS.map(e =>
+    `<button onclick="selectCustomEmoji('${e}')" style="font-size:18px;width:32px;height:32px;border-radius:8px;border:0.5px solid ${e===selectedCustomEmoji?'var(--deep)':'var(--border)'};background:${e===selectedCustomEmoji?'rgba(57,8,58,0.07)':'var(--bg)'};cursor:pointer;">${e}</button>`
+  ).join('');
+}
+
+function selectCustomEmoji(e) {
+  selectedCustomEmoji = e;
+  renderCustomEmojiPicker();
+}
+
+function addCustomCategory() {
+  const name = document.getElementById('custom-cat-name').value.trim();
+  if (!name) { document.getElementById('custom-cat-name').focus(); return; }
+  if (setupData.customCats.find(c => c.name.toLowerCase() === name.toLowerCase())) {
+    showToast('Category already exists'); return;
+  }
+  setupData.customCats.push({ name, emoji: selectedCustomEmoji, vendors: [] });
+  document.getElementById('custom-cat-name').value = '';
+  selectedCustomEmoji = CUSTOM_CAT_EMOJIS[0];
+  renderCustomEmojiPicker();
+  renderCustomCats();
+}
+
+function removeCustomCategory(i) {
+  setupData.customCats.splice(i, 1);
+  renderCustomCats();
+}
+
+function renderCustomCats() {
+  const el = document.getElementById('custom-cats-list');
+  if (!el) return;
+  if (!setupData.customCats.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--text-faint);font-style:italic;margin-bottom:10px;">No custom categories yet.</p>';
+    return;
+  }
+  el.innerHTML = setupData.customCats.map((c, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px;background:rgba(57,8,58,0.04);border-radius:var(--radius);margin-bottom:6px;">
+      <span style="font-size:18px;">${c.emoji}</span>
+      <span style="font-size:13px;font-weight:500;flex:1;">${c.name}</span>
+      <span style="font-size:11px;color:var(--text-faint);">${c.vendors.length} place${c.vendors.length!==1?'s':''}</span>
+      <button onclick="openCustomCatEdit(${i})" style="font-size:11px;color:var(--deep);background:none;border:none;cursor:pointer;font-family:DM Sans,sans-serif;">Add places</button>
+      <button onclick="removeCustomCategory(${i})" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:16px;line-height:1;">×</button>
+    </div>`).join('');
+}
+
+function openCustomCatEdit(i) {
+  const cat = setupData.customCats[i];
+  const name = prompt('Add a place to "' + cat.name + '":\n(Type a business name)', '');
+  if (!name) return;
+  cat.vendors.push({ name: name.trim(), r: null, address: null, place_id: null });
+  renderCustomCats();
 }
 
 function stars(n) {
