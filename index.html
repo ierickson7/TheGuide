@@ -311,7 +311,7 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       </div>
       <div class="setup-actions">
         <button class="btn btn-ghost btn-sm" onclick="goSetupStep(2)">Back</button>
-        <button class="btn btn-primary" onclick="saveAndPublish()">Publish Guide →</button>
+        <button class="btn btn-primary" id="publish-btn" onclick="saveAndPublish()">Publish Guide →</button>
       </div>
     </div>
     <div class="setup-step" id="setup-step-4">
@@ -938,6 +938,8 @@ function getNeighborhoodEmoji(name) {
 
 async function saveAndPublish() {
   if (!currentUser) return;
+  const publishBtn = document.getElementById('publish-btn');
+  if (publishBtn) { publishBtn.disabled = true; publishBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(250,245,231,0.3);border-top-color:#FAF5E7;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;"></span>Publishing...'; }
   // Check for unsaved pick in input field
   const pickNameInput = document.getElementById('pick-name');
   if (pickNameInput && pickNameInput.value.trim()) {
@@ -964,7 +966,10 @@ async function saveAndPublish() {
   } else {
     // New guide
     const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji, status:'live', slug }) });
-    if (!guideRes || !guideRes[0]) { showToast('Error saving guide'); return; }
+    if (!guideRes || !guideRes[0]) { 
+      if (publishBtn) { publishBtn.disabled = false; publishBtn.textContent = 'Publish Guide →'; }
+      showToast('Error saving guide'); return; 
+    }
     guideId = guideRes[0].id;
   }
   for (const [cat, vendors] of Object.entries(setupData.vendors)) {
@@ -1067,7 +1072,7 @@ async function renderClientGuide(guide, isAgent) {
     guideAvatar.textContent = initials;
   }
   document.getElementById('guide-location').textContent = 'Welcome to ' + (guide.neighborhood || guide.zip);
-  document.getElementById('guide-zip-text').textContent = guide.zip + ' · ' + (guide.neighborhood||'') + ' · Your personalized local guide';
+  document.getElementById('guide-zip-text').textContent = (guide.zip ? guide.zip + ' · ' : '') + 'Your personalized local guide';
   document.getElementById('guide-agent-name').textContent = agent.name;
   document.getElementById('guide-agent-sub').textContent = (agent.brokerage ? agent.brokerage : '');
   document.getElementById('guide-updated-time').textContent = 'Updated ' + timeAgo(guide.updated_at);
