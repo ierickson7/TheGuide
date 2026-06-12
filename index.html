@@ -901,7 +901,7 @@ async function editGuide(guideId) {
   // Load existing categories and vendors
   const cats = await dbFetch('categories?guide_id=eq.' + guideId + '&order=is_base.desc,sort_order.asc&select=*');
   if (!cats) return;
-  setupData = { zip: guide.zip, address: '', neighborhood: guide.neighborhood, vendors: {}, removed: {}, picks: [], guideId };
+  setupData = { zip: guide.zip, address: '', neighborhood: guide.neighborhood, vendors: {}, removed: {}, picks: [], guideId, slug: guide.slug, customCats: [] };
   for (const cat of cats) {
     const vendors = await dbFetch('vendors?category_id=eq.' + cat.id + '&order=rating.desc&select=*');
     if (!vendors) continue;
@@ -941,71 +941,77 @@ async function saveAndPublish() {
   if (!currentUser) return;
   const publishBtn = document.getElementById('publish-btn');
   if (publishBtn) { publishBtn.disabled = true; publishBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(250,245,231,0.3);border-top-color:#FAF5E7;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;"></span>Publishing...'; }
-  // Check for unsaved pick in input field
-  const pickNameInput = document.getElementById('pick-name');
-  if (pickNameInput && pickNameInput.value.trim()) {
-    const confirm = window.confirm('You have an unsaved pick "' + pickNameInput.value.trim() + '" — add it before publishing?');
-    if (confirm) { addPick(); }
-  }
-  const agentSlug = (currentAgent?.name || 'agent').toLowerCase().replace(/\s+/g,'-');
-  const hoodSlug = setupData.neighborhood.toLowerCase().replace(/\s+/g,'-');
-  const baseSlug = agentSlug + '-' + hoodSlug + '-' + setupData.zip;
-  // Add unique suffix if editing, use base slug for new guides (timestamp ensures uniqueness)
-  const slug = setupData.guideId ? baseSlug : baseSlug + '-' + Date.now().toString(36);
-  const emoji = getNeighborhoodEmoji(setupData.neighborhood);
-
-  let guideId = setupData.guideId;
-
-  if (guideId) {
-    // Editing existing guide — delete old categories (cascades to vendors)
-    await dbFetch('categories?guide_id=eq.' + guideId, { method: 'DELETE' });
-    // Update guide metadata
-    await dbFetch('guides?id=eq.' + guideId, {
-      method: 'PATCH',
-      body: JSON.stringify({ neighborhood: setupData.neighborhood, zip: setupData.zip, updated_at: new Date().toISOString() })
-    });
-  } else {
-    // New guide
-    const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji, status:'live', slug }) });
-    if (!guideRes || !guideRes[0]) { 
-      if (publishBtn) { publishBtn.disabled = false; publishBtn.textContent = 'Publish Guide →'; }
-      showToast('Error saving guide'); return; 
+  try {
+    // Check for unsaved pick in input field
+    const pickNameInput = document.getElementById('pick-name');
+    if (pickNameInput && pickNameInput.value.trim()) {
+      const confirm = window.confirm('You have an unsaved pick "' + pickNameInput.value.trim() + '" — add it before publishing?');
+      if (confirm) { addPick(); }
     }
-    guideId = guideRes[0].id;
-  }
-  for (const [cat, vendors] of Object.entries(setupData.vendors)) {
-    const catRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name: cat, is_base: true }) });
-    if (!catRes || !catRes[0]) continue;
-    const catId = catRes[0].id;
-    for (let i = 0; i < vendors.length; i++) {
-      if (setupData.removed[cat+'_'+i]) continue;
-      await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: catId, name: vendors[i].name, rating: vendors[i].r, address: vendors[i].address || null }) });
+    const agentSlug = (currentAgent?.name || 'agent').toLowerCase().replace(/\s+/g,'-');
+    const hoodSlug = (setupData.neighborhood || '').toLowerCase().replace(/\s+/g,'-');
+    const baseSlug = agentSlug + '-' + hoodSlug + '-' + setupData.zip;
+    // For edits, preserve the existing slug; for new guides add a timestamp suffix
+    const slug = setupData.slug || (setupData.guideId ? baseSlug : baseSlug + '-' + Date.now().toString(36));
+    const emoji = getNeighborhoodEmoji(setupData.neighborhood);
+
+    let guideId = setupData.guideId;
+
+    if (guideId) {
+      // Editing existing guide — delete old categories (cascades to vendors)
+      await dbFetch('categories?guide_id=eq.' + guideId, { method: 'DELETE' });
+      // Update guide metadata
+      await dbFetch('guides?id=eq.' + guideId, {
+        method: 'PATCH',
+        body: JSON.stringify({ neighborhood: setupData.neighborhood, zip: setupData.zip, updated_at: new Date().toISOString() })
+      });
+    } else {
+      // New guide
+      const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji, status:'live', slug }) });
+      if (!guideRes || !guideRes[0]) {
+        showToast('Error saving guide'); return;
+      }
+      guideId = guideRes[0].id;
     }
-  }
-  if (setupData.picks.length) {
-    const picksRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name:"Agent's Picks", is_base: false }) });
-    if (picksRes && picksRes[0]) {
-      for (const p of setupData.picks) {
-        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: picksRes[0].id, name: p.name, is_agent_pick: true, agent_note: p.note, place_id: p.place_id || null, address: p.cat || null }) });
+    for (const [cat, vendors] of Object.entries(setupData.vendors)) {
+      const catRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name: cat, is_base: true }) });
+      if (!catRes || !catRes[0]) continue;
+      const catId = catRes[0].id;
+      for (let i = 0; i < vendors.length; i++) {
+        if (setupData.removed[cat+'_'+i]) continue;
+        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: catId, name: vendors[i].name, rating: vendors[i].r, address: vendors[i].address || null }) });
       }
     }
-  }
-  // Save custom categories
-  if (setupData.customCats && setupData.customCats.length) {
-    for (const cc of setupData.customCats) {
-      const ccRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name: cc.name, emoji: cc.emoji, is_base: true, sort_order: 99 }) });
-      if (!ccRes || !ccRes[0]) continue;
-      for (const v of cc.vendors) {
-        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: ccRes[0].id, name: v.name, rating: v.r || null, address: v.address || null, place_id: v.place_id || null }) });
+    if (setupData.picks.length) {
+      const picksRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name:"Agent's Picks", is_base: false }) });
+      if (picksRes && picksRes[0]) {
+        for (const p of setupData.picks) {
+          await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: picksRes[0].id, name: p.name, is_agent_pick: true, agent_note: p.note, place_id: p.place_id || null, address: p.cat || null }) });
+        }
       }
     }
+    // Save custom categories
+    if (setupData.customCats && setupData.customCats.length) {
+      for (const cc of setupData.customCats) {
+        const ccRes = await dbFetch('categories', { method:'POST', body: JSON.stringify({ guide_id: guideId, name: cc.name, emoji: cc.emoji, is_base: true, sort_order: 99 }) });
+        if (!ccRes || !ccRes[0]) continue;
+        for (const v of cc.vendors) {
+          await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: ccRes[0].id, name: v.name, rating: v.r || null, address: v.address || null, place_id: v.place_id || null }) });
+        }
+      }
+    }
+    const link = location.origin + location.pathname + '?guide=' + slug;
+    document.getElementById('publish-link').textContent = link;
+    document.getElementById('publish-sub').textContent = (setupData.neighborhood || '') + ' · ' + setupData.zip;
+    document.querySelector('#setup-step-4 .publish-title').textContent = setupData.guideId ? 'Guide updated! 🎉' : 'Your guide is live! 🎉';
+    goSetupStep(4);
+    loadGuides();
+  } catch(e) {
+    console.error('saveAndPublish error:', e);
+    showToast('Error saving guide. Please try again.');
+  } finally {
+    if (publishBtn) { publishBtn.disabled = false; publishBtn.textContent = 'Publish Guide →'; }
   }
-  const link = location.origin + location.pathname + '?guide=' + slug;
-  document.getElementById('publish-link').textContent = link;
-  document.getElementById('publish-sub').textContent = setupData.neighborhood + ' · ' + setupData.zip;
-  document.querySelector('#setup-step-4 .publish-title').textContent = setupData.guideId ? 'Guide updated! 🎉' : 'Your guide is live! 🎉';
-  goSetupStep(4);
-  loadGuides();
 }
 
 function copyPublishLink() {
