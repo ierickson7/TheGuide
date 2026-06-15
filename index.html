@@ -1206,6 +1206,7 @@ async function renderClientGuide(guide, isAgent) {
   }
   async function initGuideMap() {
     if (!window.google || !window.google.maps) return;
+    const { Place } = await google.maps.importLibrary('places');
     const mapEl = document.getElementById('guide-map');
     const map = new google.maps.Map(mapEl, {
       zoom: 13,
@@ -1223,7 +1224,7 @@ async function renderClientGuide(guide, isAgent) {
       for (const v of cat.vendors) {
         if (!v.place_id) continue;
         try {
-          const place = new google.maps.places.Place({ id: v.place_id });
+          const place = new Place({ id: v.place_id });
           await place.fetchFields({ fields: ['location'] });
           if (!place.location) continue;
           const pos = place.location;
