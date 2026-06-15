@@ -1257,6 +1257,21 @@ async function renderClientGuide(guide, isAgent) {
       };
     }
 
+    // Establish location bias from home address before searching vendors
+    let locationBias = null;
+    let homePos = null;
+    const homeQuery = guide.address || neighborhood;
+    if (homeQuery) {
+      try {
+        const { places: homeResults } = await Place.searchByText({ textQuery: homeQuery, fields: ['location'], maxResultCount: 1 });
+        const hp = homeResults && homeResults[0];
+        if (hp && hp.location) {
+          homePos = hp.location;
+          locationBias = { center: { lat: homePos.lat(), lng: homePos.lng() }, radius: 20000 };
+        }
+      } catch(e) { console.warn('Could not resolve home location', e); }
+    }
+
     async function getPlaceData(v) {
       if (v.place_id) {
         const place = new Place({ id: v.place_id });
@@ -1264,7 +1279,9 @@ async function renderClientGuide(guide, isAgent) {
         return { pos: place.location || null, website: place.websiteURI || null };
       }
       const query = v.name + (neighborhood ? ' ' + neighborhood : '');
-      const { places } = await Place.searchByText({ textQuery: query, fields: ['location', 'websiteURI'], maxResultCount: 1 });
+      const opts = { textQuery: query, fields: ['location', 'websiteURI'], maxResultCount: 1 };
+      if (locationBias) opts.locationBias = locationBias;
+      const { places } = await Place.searchByText(opts);
       const p = places && places[0];
       return { pos: (p && p.location) || null, website: (p && p.websiteURI) || null };
     }
@@ -1315,29 +1332,20 @@ async function renderClientGuide(guide, isAgent) {
       }
     }
 
-    // Home pin for subject property
-    const homeQuery = guide.address || neighborhood;
-    if (homeQuery) {
-      try {
-        const { places: homeResults } = await Place.searchByText({ textQuery: homeQuery, fields: ['location'], maxResultCount: 1 });
-        const hp = homeResults && homeResults[0];
-        if (hp && hp.location) {
-          bounds.extend(hp.location);
-          const homeMarker = new google.maps.Marker({
-            position: hp.location, map,
-            title: 'Subject Property',
-            icon: emojiIcon('🏠', 36),
-            zIndex: 1000,
-          });
-          homeMarker.addListener('click', () => {
-            infoWindow.setContent(`<div style="font-family:'DM Sans',sans-serif;max-width:200px;padding:2px 0;"><p style="font-size:13px;font-weight:600;margin:0 0 3px">Subject Property</p><p style="font-size:12px;color:#888;margin:0">${homeQuery}</p></div>`);
-            infoWindow.open(map, homeMarker);
-          });
-          if (pinCount > 0) map.fitBounds(bounds);
-        }
-      } catch(e) {
-        console.warn('Could not place home pin', e);
-      }
+    // Home pin — reuse homePos already fetched for location bias
+    if (homePos) {
+      bounds.extend(homePos);
+      const homeMarker = new google.maps.Marker({
+        position: homePos, map,
+        title: 'Subject Property',
+        icon: emojiIcon('🏠', 36),
+        zIndex: 1000,
+      });
+      homeMarker.addListener('click', () => {
+        infoWindow.setContent(`<div style="font-family:'DM Sans',sans-serif;max-width:200px;padding:2px 0;"><p style="font-size:13px;font-weight:600;margin:0 0 3px">Subject Property</p><p style="font-size:12px;color:#888;margin:0">${homeQuery}</p></div>`);
+        infoWindow.open(map, homeMarker);
+      });
+      if (pinCount > 0) map.fitBounds(bounds);
     }
 
     // Render legend
