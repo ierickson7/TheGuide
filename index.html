@@ -1215,28 +1215,19 @@ async function renderClientGuide(guide, isAgent) {
       fullscreenControl: false,
       clickableIcons: false,
     });
-    const geocoder = new google.maps.Geocoder();
+    const service = new google.maps.places.PlacesService(map);
     const infoWindow = new google.maps.InfoWindow();
     const bounds = new google.maps.LatLngBounds();
     let pinCount = 0;
     map.addListener('click', () => infoWindow.close());
-    const locationCtx = guide.neighborhood || guide.zip;
-    geocoder.geocode({ address: locationCtx }, (results, status) => {
-      if (status === 'OK') map.setCenter(results[0].geometry.location);
-    });
-    // Collect all vendors and stagger requests to avoid rate-limiting
     const pending = [];
     for (const [catName, cat] of Object.entries(catData)) {
       for (const v of cat.vendors) {
-        const req = v.place_id
-          ? { placeId: v.place_id }
-          : v.address && !cat.isPicks
-            ? { address: v.address + ', ' + locationCtx }
-            : { address: v.name + ', ' + locationCtx };
-        pending.push({ req, v, catName, cat });
+        if (!v.place_id) continue;
+        pending.push({ v, catName, cat });
       }
     }
-    pending.forEach(({ req, v, catName, cat }, idx) => {
+    pending.forEach(({ v, catName, cat }, idx) => {
       setTimeout(() => {
         const pinColor = cat.isPicks ? '#FD5247' : '#39083A';
         const cleanName = v.name ? v.name.split(',')[0].trim() : v.name;
@@ -1246,9 +1237,9 @@ async function renderClientGuide(guide, isAgent) {
           ${v.rating ? `<p style="font-size:11px;color:#c07a00;margin:0">${stars(v.rating)} ${v.rating}</p>` : ''}
           ${!v.agent_note && !v.rating ? `<p style="font-size:11px;color:#888;margin:0">${catName}</p>` : ''}
         </div>`;
-        geocoder.geocode(req, (results, status) => {
-          if (status !== 'OK' || !results[0]) return;
-          const pos = results[0].geometry.location;
+        service.getDetails({ placeId: v.place_id, fields: ['geometry'] }, (place, status) => {
+          if (status !== google.maps.places.PlacesServiceStatus.OK || !place?.geometry) return;
+          const pos = place.geometry.location;
           bounds.extend(pos);
           pinCount++;
           const marker = new google.maps.Marker({
