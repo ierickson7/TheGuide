@@ -359,7 +359,8 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       <span style="margin-left:auto;font-size:11px;color:var(--text-faint);" id="guide-updated-time"></span>
     </div>
     <div class="guide-cats" id="guide-cats"></div>
-    <div id="guide-map" style="display:none;width:100%;height:calc(100svh - 250px);min-height:400px;"></div>
+    <div id="guide-map" style="display:none;width:100%;height:calc(100svh - 290px);min-height:360px;"></div>
+    <div id="guide-map-legend" style="display:none;flex-wrap:wrap;gap:4px 12px;padding:10px 14px;border-top:0.5px solid var(--border);background:var(--surface);"></div>
     <div class="guide-content" id="guide-content"></div>
   </div>
 </div>
@@ -1167,14 +1168,17 @@ async function renderClientGuide(guide, isAgent) {
   window.guideCatClick = function(i) { activeCat = catKeys[i]; renderCats(); };
   function renderCatContent() {
     const mapEl = document.getElementById('guide-map');
+    const legendEl = document.getElementById('guide-map-legend');
     const contentEl = document.getElementById('guide-content');
     if (activeCat === VIEW_ALL) {
       mapEl.style.display = 'block';
+      if (legendEl) legendEl.style.display = guideMapReady ? 'flex' : 'none';
       contentEl.style.display = 'none';
       if (!guideMapReady) { guideMapReady = true; initGuideMap(); }
       return;
     }
     mapEl.style.display = 'none';
+    if (legendEl) legendEl.style.display = 'none';
     contentEl.style.display = 'block';
     const cat = catData[activeCat];
     let html = '';
@@ -1244,6 +1248,18 @@ async function renderClientGuide(guide, isAgent) {
     const neighborhood = guide.neighborhood || guide.zip || '';
     map.addListener('click', () => infoWindow.close());
 
+    const CAT_PALETTE = ['#6D0A58', '#734B77', '#FEA29C', '#FBC9BD', '#39083A', '#FD5247'];
+    const PICKS_COLOR = '#39083A';
+    const HOME_COLOR = '#FD5247';
+    const STROKE = '#FAF5E7';
+
+    // Pre-assign a color to each category
+    const catColors = {};
+    let paletteIdx = 0;
+    for (const [catName, cat] of Object.entries(catData)) {
+      catColors[catName] = cat.isPicks ? PICKS_COLOR : CAT_PALETTE[paletteIdx++ % CAT_PALETTE.length];
+    }
+
     async function getPlaceData(v) {
       if (v.place_id) {
         const place = new Place({ id: v.place_id });
@@ -1256,7 +1272,10 @@ async function renderClientGuide(guide, isAgent) {
       return { pos: (p && p.location) || null, website: (p && p.websiteURI) || null };
     }
 
+    const legendItems = [];
     for (const [catName, cat] of Object.entries(catData)) {
+      const pinColor = catColors[catName];
+      let catPlaced = false;
       for (const v of cat.vendors) {
         if (!v.name) continue;
         try {
@@ -1264,7 +1283,7 @@ async function renderClientGuide(guide, isAgent) {
           if (!pos) continue;
           bounds.extend(pos);
           pinCount++;
-          const pinColor = cat.isPicks ? '#FD5247' : '#39083A';
+          if (!catPlaced) { catPlaced = true; legendItems.push({ name: catName, color: pinColor }); }
           const cleanName = v.name.split(',')[0].trim();
           const hasExtra = v.agent_note || v.rating || website;
           const popupHtml = `<div style="font-family:'DM Sans',sans-serif;max-width:220px;padding:2px 0;">
@@ -1276,7 +1295,7 @@ async function renderClientGuide(guide, isAgent) {
           </div>`;
           const marker = new google.maps.Marker({
             position: pos, map, title: cleanName,
-            icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: pinColor, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 8 },
+            icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: pinColor, fillOpacity: 1, strokeColor: STROKE, strokeWeight: 1.5, scale: 8 },
           });
           marker.addListener('click', () => { infoWindow.setContent(popupHtml); infoWindow.open(map, marker); });
           if (pinCount > 1) map.fitBounds(bounds); else map.setCenter(pos);
@@ -1297,8 +1316,8 @@ async function renderClientGuide(guide, isAgent) {
           const homeMarker = new google.maps.Marker({
             position: hp.location, map,
             title: 'Subject Property',
-            label: { text: '⌂', color: '#fff', fontSize: '16px', fontWeight: 'bold' },
-            icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: '#FD5247', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2.5, scale: 14 },
+            label: { text: '⌂', color: STROKE, fontSize: '16px', fontWeight: 'bold' },
+            icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: HOME_COLOR, fillOpacity: 1, strokeColor: STROKE, strokeWeight: 2.5, scale: 14 },
             zIndex: 1000,
           });
           homeMarker.addListener('click', () => {
@@ -1310,6 +1329,21 @@ async function renderClientGuide(guide, isAgent) {
       } catch(e) {
         console.warn('Could not place home pin', e);
       }
+    }
+
+    // Render legend
+    const legendEl = document.getElementById('guide-map-legend');
+    if (legendEl && legendItems.length) {
+      legendEl.innerHTML = [
+        { name: 'Subject Property', color: HOME_COLOR },
+        ...legendItems
+      ].map(item =>
+        `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#39083A;white-space:nowrap;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};border:1.5px solid ${STROKE};flex-shrink:0;"></span>
+          ${item.name}
+        </span>`
+      ).join('');
+      legendEl.style.display = 'flex';
     }
   }
   renderCats();
