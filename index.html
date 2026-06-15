@@ -986,7 +986,7 @@ async function saveAndPublish(status = 'live') {
       const catId = catRes[0].id;
       for (let i = 0; i < vendors.length; i++) {
         if (setupData.removed[cat+'_'+i]) continue;
-        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: catId, name: vendors[i].name, rating: vendors[i].r, address: vendors[i].address || null }) });
+        await dbFetch('vendors', { method:'POST', body: JSON.stringify({ category_id: catId, name: vendors[i].name, rating: vendors[i].r, address: vendors[i].address || null, place_id: vendors[i].place_id || null }) });
       }
     }
     if (setupData.picks.length) {
@@ -1219,19 +1219,30 @@ async function renderClientGuide(guide, isAgent) {
     const infoWindow = new google.maps.InfoWindow();
     const bounds = new google.maps.LatLngBounds();
     let pinCount = 0;
+    const neighborhood = guide.neighborhood || guide.zip || '';
     map.addListener('click', () => infoWindow.close());
+
+    async function getLocation(v) {
+      if (v.place_id) {
+        const place = new Place({ id: v.place_id });
+        await place.fetchFields({ fields: ['location'] });
+        return place.location || null;
+      }
+      const query = v.name + (neighborhood ? ' ' + neighborhood : '');
+      const { places } = await Place.searchByText({ textQuery: query, fields: ['location'], maxResultCount: 1 });
+      return (places && places[0] && places[0].location) ? places[0].location : null;
+    }
+
     for (const [catName, cat] of Object.entries(catData)) {
       for (const v of cat.vendors) {
-        if (!v.place_id) continue;
+        if (!v.name) continue;
         try {
-          const place = new Place({ id: v.place_id });
-          await place.fetchFields({ fields: ['location'] });
-          if (!place.location) continue;
-          const pos = place.location;
+          const pos = await getLocation(v);
+          if (!pos) continue;
           bounds.extend(pos);
           pinCount++;
           const pinColor = cat.isPicks ? '#FD5247' : '#39083A';
-          const cleanName = v.name ? v.name.split(',')[0].trim() : v.name;
+          const cleanName = v.name.split(',')[0].trim();
           const popupHtml = `<div style="font-family:'DM Sans',sans-serif;max-width:220px;padding:2px 0;">
             <p style="font-size:13px;font-weight:500;margin:0${v.agent_note||v.rating?' 0 5px':''}">${cleanName}</p>
             ${v.agent_note ? `<p style="font-size:12px;color:#555;font-style:italic;margin:0 0 4px">"${v.agent_note}"</p>` : ''}
@@ -1245,7 +1256,7 @@ async function renderClientGuide(guide, isAgent) {
           marker.addListener('click', () => { infoWindow.setContent(popupHtml); infoWindow.open(map, marker); });
           if (pinCount > 1) map.fitBounds(bounds); else map.setCenter(pos);
         } catch(e) {
-          console.warn('Could not fetch place:', v.place_id, e);
+          console.warn('Could not place pin for:', v.name, e);
         }
       }
     }
