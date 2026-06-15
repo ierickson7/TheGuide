@@ -312,6 +312,7 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       </div>
       <div class="setup-actions">
         <button class="btn btn-ghost btn-sm" onclick="goSetupStep(2)">Back</button>
+        <button class="btn btn-ghost btn-sm" id="draft-btn" onclick="saveAndPublish('draft')">Save as draft</button>
         <button class="btn btn-primary" id="publish-btn" onclick="saveAndPublish()">Publish Guide →</button>
       </div>
     </div>
@@ -690,6 +691,9 @@ async function confirmDelete() {
 
 function startNewGuide() {
   setupData = { zip: '', address: '', neighborhood: '', vendors: {}, removed: {}, picks: [], guideId: null, customCats: [] };
+  document.getElementById('zip-input').value = '';
+  const hoodInput = document.getElementById('hood-input');
+  if (hoodInput) hoodInput.value = '';
   goSetupStep(1);
   showScreen('setup');
   const logo = document.querySelector('#screen-setup .nav-logo');
@@ -937,10 +941,12 @@ function getNeighborhoodEmoji(name) {
   return '🏡';
 }
 
-async function saveAndPublish() {
+async function saveAndPublish(status = 'live') {
   if (!currentUser) return;
   const publishBtn = document.getElementById('publish-btn');
-  if (publishBtn) { publishBtn.disabled = true; publishBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(250,245,231,0.3);border-top-color:#FAF5E7;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;"></span>Publishing...'; }
+  const draftBtn = document.getElementById('draft-btn');
+  if (publishBtn) { publishBtn.disabled = true; publishBtn.innerHTML = status === 'live' ? '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(250,245,231,0.3);border-top-color:#FAF5E7;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;"></span>Publishing...' : 'Publish Guide →'; }
+  if (draftBtn) { draftBtn.disabled = true; draftBtn.textContent = status === 'draft' ? 'Saving...' : 'Save as draft'; }
   try {
     // Check for unsaved pick in input field
     const pickNameInput = document.getElementById('pick-name');
@@ -963,11 +969,11 @@ async function saveAndPublish() {
       // Update guide metadata
       await dbFetch('guides?id=eq.' + guideId, {
         method: 'PATCH',
-        body: JSON.stringify({ neighborhood: setupData.neighborhood, zip: setupData.zip, updated_at: new Date().toISOString() })
+        body: JSON.stringify({ neighborhood: setupData.neighborhood, zip: setupData.zip, status, updated_at: new Date().toISOString() })
       });
     } else {
       // New guide
-      const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji, status:'live', slug }) });
+      const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji, status, slug }) });
       if (!guideRes || !guideRes[0]) {
         showToast('Error saving guide'); return;
       }
@@ -1003,6 +1009,12 @@ async function saveAndPublish() {
     const link = location.origin + location.pathname + '?guide=' + slug;
     document.getElementById('publish-link').textContent = link;
     document.getElementById('publish-sub').textContent = (setupData.neighborhood || '') + ' · ' + setupData.zip;
+    if (status === 'draft') {
+      showToast('Saved as draft');
+      showScreen('dashboard');
+      loadGuides();
+      return;
+    }
     document.querySelector('#setup-step-4 .publish-title').textContent = setupData.guideId ? 'Guide updated! 🎉' : 'Your guide is live! 🎉';
     goSetupStep(4);
     loadGuides();
@@ -1011,6 +1023,7 @@ async function saveAndPublish() {
     showToast('Error saving guide. Please try again.');
   } finally {
     if (publishBtn) { publishBtn.disabled = false; publishBtn.textContent = 'Publish Guide →'; }
+    if (draftBtn) { draftBtn.disabled = false; draftBtn.textContent = 'Save as draft'; }
   }
 }
 
