@@ -359,6 +359,7 @@ gmp-place-autocomplete input { font-family: 'DM Sans', sans-serif !important; fo
       <span style="margin-left:auto;font-size:11px;color:var(--text-faint);" id="guide-updated-time"></span>
     </div>
     <div class="guide-cats" id="guide-cats"></div>
+    <div id="guide-map" style="display:none;width:100%;height:calc(100svh - 250px);min-height:400px;"></div>
     <div class="guide-content" id="guide-content"></div>
   </div>
 </div>
@@ -1131,8 +1132,10 @@ async function renderClientGuide(guide, isAgent) {
     const displayName = isPicksCat ? firstName + "'s Picks" : cat.name;
     catData[displayName] = { vendors: vendors||[], isPicks: isPicksCat, isCustom, emoji: cat.emoji || null };
   }
-  let activeCat = Object.keys(catData)[0];
-  const catKeys = Object.keys(catData);
+  const VIEW_ALL = 'View All';
+  const catKeys = [VIEW_ALL, ...Object.keys(catData)];
+  let activeCat = catKeys[1] || VIEW_ALL;
+  let guideMapReady = false;
   function renderCats() {
     document.getElementById('guide-cats').innerHTML = catKeys.map((c, i) =>
       `<button class="guide-cat-btn${c===activeCat?' active':''}" onclick="guideCatClick(${i})">${c.charAt(0).toUpperCase() + c.slice(1)}</button>`
@@ -1141,6 +1144,16 @@ async function renderClientGuide(guide, isAgent) {
   }
   window.guideCatClick = function(i) { activeCat = catKeys[i]; renderCats(); };
   function renderCatContent() {
+    const mapEl = document.getElementById('guide-map');
+    const contentEl = document.getElementById('guide-content');
+    if (activeCat === VIEW_ALL) {
+      mapEl.style.display = 'block';
+      contentEl.style.display = 'none';
+      if (!guideMapReady) { guideMapReady = true; initGuideMap(); }
+      return;
+    }
+    mapEl.style.display = 'none';
+    contentEl.style.display = 'block';
     const cat = catData[activeCat];
     let html = '';
     if (cat.isPicks) {
@@ -1190,6 +1203,54 @@ async function renderClientGuide(guide, isAgent) {
       </div>`;
     }
     document.getElementById('guide-content').innerHTML = html;
+  }
+  function initGuideMap() {
+    if (!window.google || !window.google.maps) return;
+    const mapEl = document.getElementById('guide-map');
+    const map = new google.maps.Map(mapEl, {
+      zoom: 13,
+      center: { lat: 47.6062, lng: -122.3321 },
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      clickableIcons: false,
+    });
+    const geocoder = new google.maps.Geocoder();
+    const infoWindow = new google.maps.InfoWindow();
+    const bounds = new google.maps.LatLngBounds();
+    let pinCount = 0;
+    map.addListener('click', () => infoWindow.close());
+    geocoder.geocode({ address: guide.zip }, (results, status) => {
+      if (status === 'OK') map.setCenter(results[0].geometry.location);
+    });
+    for (const [catName, cat] of Object.entries(catData)) {
+      for (const v of cat.vendors) {
+        const req = v.place_id
+          ? { placeId: v.place_id }
+          : (!cat.isPicks && v.address) ? { address: v.address } : null;
+        if (!req) continue;
+        const pinColor = cat.isPicks ? '#FD5247' : '#39083A';
+        const cleanName = v.name ? v.name.split(',')[0].trim() : v.name;
+        const popupHtml = `<div style="font-family:'DM Sans',sans-serif;max-width:220px;padding:2px 0;">
+          <p style="font-size:13px;font-weight:500;margin:0${v.agent_note||v.rating?' 0 5px':''}">${cleanName}</p>
+          ${v.agent_note ? `<p style="font-size:12px;color:#555;font-style:italic;margin:0 0 4px">"${v.agent_note}"</p>` : ''}
+          ${v.rating ? `<p style="font-size:11px;color:#c07a00;margin:0">${stars(v.rating)} ${v.rating}</p>` : ''}
+          ${!v.agent_note && !v.rating ? `<p style="font-size:11px;color:#888;margin:0">${catName}</p>` : ''}
+        </div>`;
+        geocoder.geocode(req, (results, status) => {
+          if (status !== 'OK' || !results[0]) return;
+          const pos = results[0].geometry.location;
+          bounds.extend(pos);
+          pinCount++;
+          const marker = new google.maps.Marker({
+            position: pos, map, title: cleanName,
+            icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: pinColor, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 8 },
+          });
+          marker.addListener('click', () => { infoWindow.setContent(popupHtml); infoWindow.open(map, marker); });
+          if (pinCount > 1) map.fitBounds(bounds); else map.setCenter(pos);
+        });
+      }
+    }
   }
   renderCats();
   document.getElementById('screen-guide').classList.add('loaded');
