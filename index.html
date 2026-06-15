@@ -850,7 +850,7 @@ let _neighborhoodBoundsCache = null;
 
 async function getNeighborhoodBounds() {
   if (_neighborhoodBoundsCache) return _neighborhoodBoundsCache;
-  const query = setupData.neighborhood || setupData.zip;
+  const query = setupData.zip || setupData.address || setupData.neighborhood;
   if (!query || !window.google?.maps) return null;
   try {
     const { Place } = await google.maps.importLibrary('places');
@@ -1316,7 +1316,7 @@ async function renderClientGuide(guide, isAgent) {
           if (reviewCount !== null && reviewCount < 50) continue;
           bounds.extend(pos);
           pinCount++;
-          if (!catPlaced) { catPlaced = true; legendItems.push({ name: catName, emoji }); }
+          if (!catPlaced) { catPlaced = true; legendItems.push({ name: catName, emoji, dot: cat.isPicks ? '#FD5247' : false }); }
           const cleanName = v.name.split(',')[0].trim();
           const hasExtra = v.agent_note || v.rating || website;
           const popupHtml = `<div style="font-family:'DM Sans',sans-serif;max-width:220px;padding:2px 0;">
@@ -1328,7 +1328,9 @@ async function renderClientGuide(guide, isAgent) {
           </div>`;
           const marker = new google.maps.Marker({
             position: pos, map, title: cleanName,
-            icon: emojiIcon(emoji),
+            icon: cat.isPicks
+              ? { path: google.maps.SymbolPath.CIRCLE, fillColor: '#FD5247', fillOpacity: 1, strokeColor: '#FD5247', strokeWeight: 0, scale: 8 }
+              : emojiIcon(emoji),
           });
           marker.addListener('click', () => { infoWindow.setContent(popupHtml); infoWindow.open(map, marker); });
           if (pinCount > 1) map.fitBounds(bounds); else map.setCenter(pos);
@@ -1357,8 +1359,13 @@ async function renderClientGuide(guide, isAgent) {
     // Render legend
     const legendEl = document.getElementById('guide-map-legend');
     if (legendEl && legendItems.length) {
-      legendEl.innerHTML = [{ name: 'Subject Property', emoji: '🏠' }, ...legendItems].map(item =>
-        `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#39083A;white-space:nowrap;">${item.emoji} ${item.name}</span>`
+      legendEl.innerHTML = [{ name: 'Subject Property', emoji: '🏠', dot: false }, ...legendItems].map(item =>
+        `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#39083A;white-space:nowrap;">
+          ${item.dot
+            ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.dot};flex-shrink:0;"></span>`
+            : item.emoji}
+          ${item.name}
+        </span>`
       ).join('');
       legendEl.style.display = 'flex';
     }
