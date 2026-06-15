@@ -970,11 +970,11 @@ async function saveAndPublish(status = 'live') {
       // Update guide metadata
       await dbFetch('guides?id=eq.' + guideId, {
         method: 'PATCH',
-        body: JSON.stringify({ neighborhood: setupData.neighborhood, zip: setupData.zip, status, updated_at: new Date().toISOString() })
+        body: JSON.stringify({ neighborhood: setupData.neighborhood, zip: setupData.zip, address: setupData.address || null, status, updated_at: new Date().toISOString() })
       });
     } else {
       // New guide
-      const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, emoji, status, slug }) });
+      const guideRes = await dbFetch('guides', { method:'POST', body: JSON.stringify({ agent_id: currentUser.user.id, neighborhood: setupData.neighborhood, zip: setupData.zip, address: setupData.address || null, emoji, status, slug }) });
       if (!guideRes || !guideRes[0]) {
         showToast('Error saving guide'); return;
       }
@@ -1222,32 +1222,35 @@ async function renderClientGuide(guide, isAgent) {
     const neighborhood = guide.neighborhood || guide.zip || '';
     map.addListener('click', () => infoWindow.close());
 
-    async function getLocation(v) {
+    async function getPlaceData(v) {
       if (v.place_id) {
         const place = new Place({ id: v.place_id });
-        await place.fetchFields({ fields: ['location'] });
-        return place.location || null;
+        await place.fetchFields({ fields: ['location', 'websiteURI'] });
+        return { pos: place.location || null, website: place.websiteURI || null };
       }
       const query = v.name + (neighborhood ? ' ' + neighborhood : '');
-      const { places } = await Place.searchByText({ textQuery: query, fields: ['location'], maxResultCount: 1 });
-      return (places && places[0] && places[0].location) ? places[0].location : null;
+      const { places } = await Place.searchByText({ textQuery: query, fields: ['location', 'websiteURI'], maxResultCount: 1 });
+      const p = places && places[0];
+      return { pos: (p && p.location) || null, website: (p && p.websiteURI) || null };
     }
 
     for (const [catName, cat] of Object.entries(catData)) {
       for (const v of cat.vendors) {
         if (!v.name) continue;
         try {
-          const pos = await getLocation(v);
+          const { pos, website } = await getPlaceData(v);
           if (!pos) continue;
           bounds.extend(pos);
           pinCount++;
           const pinColor = cat.isPicks ? '#FD5247' : '#39083A';
           const cleanName = v.name.split(',')[0].trim();
+          const hasExtra = v.agent_note || v.rating || website;
           const popupHtml = `<div style="font-family:'DM Sans',sans-serif;max-width:220px;padding:2px 0;">
-            <p style="font-size:13px;font-weight:500;margin:0${v.agent_note||v.rating?' 0 5px':''}">${cleanName}</p>
+            <p style="font-size:13px;font-weight:500;margin:0${hasExtra?' 0 5px':''}">${cleanName}</p>
             ${v.agent_note ? `<p style="font-size:12px;color:#555;font-style:italic;margin:0 0 4px">"${v.agent_note}"</p>` : ''}
-            ${v.rating ? `<p style="font-size:11px;color:#c07a00;margin:0">${stars(v.rating)} ${v.rating}</p>` : ''}
-            ${!v.agent_note && !v.rating ? `<p style="font-size:11px;color:#888;margin:0">${catName}</p>` : ''}
+            ${v.rating ? `<p style="font-size:11px;color:#c07a00;margin:0${website?' 0 4px':''}">${stars(v.rating)} ${v.rating}</p>` : ''}
+            ${!v.agent_note && !v.rating ? `<p style="font-size:11px;color:#888;margin:0${website?' 0 4px':''}">${catName}</p>` : ''}
+            ${website ? `<a href="${website}" target="_blank" rel="noopener" style="font-size:12px;color:#39083A;font-weight:500;display:inline-block;margin-top:1px;">Visit website →</a>` : ''}
           </div>`;
           const marker = new google.maps.Marker({
             position: pos, map, title: cleanName,
@@ -1258,6 +1261,32 @@ async function renderClientGuide(guide, isAgent) {
         } catch(e) {
           console.warn('Could not place pin for:', v.name, e);
         }
+      }
+    }
+
+    // Home pin for subject property
+    const homeQuery = guide.address || neighborhood;
+    if (homeQuery) {
+      try {
+        const { places: homeResults } = await Place.searchByText({ textQuery: homeQuery, fields: ['location'], maxResultCount: 1 });
+        const hp = homeResults && homeResults[0];
+        if (hp && hp.location) {
+          bounds.extend(hp.location);
+          const homeMarker = new google.maps.Marker({
+            position: hp.location, map,
+            title: 'Subject Property',
+            label: { text: '⌂', color: '#fff', fontSize: '16px', fontWeight: 'bold' },
+            icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: '#FD5247', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2.5, scale: 14 },
+            zIndex: 1000,
+          });
+          homeMarker.addListener('click', () => {
+            infoWindow.setContent(`<div style="font-family:'DM Sans',sans-serif;max-width:200px;padding:2px 0;"><p style="font-size:13px;font-weight:600;margin:0 0 3px">Subject Property</p><p style="font-size:12px;color:#888;margin:0">${homeQuery}</p></div>`);
+            infoWindow.open(map, homeMarker);
+          });
+          if (pinCount > 0) map.fitBounds(bounds);
+        }
+      } catch(e) {
+        console.warn('Could not place home pin', e);
       }
     }
   }
