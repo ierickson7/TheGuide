@@ -1220,15 +1220,24 @@ async function renderClientGuide(guide, isAgent) {
     const bounds = new google.maps.LatLngBounds();
     let pinCount = 0;
     map.addListener('click', () => infoWindow.close());
-    geocoder.geocode({ address: guide.zip }, (results, status) => {
+    const locationCtx = guide.neighborhood || guide.zip;
+    geocoder.geocode({ address: locationCtx }, (results, status) => {
       if (status === 'OK') map.setCenter(results[0].geometry.location);
     });
+    // Collect all vendors and stagger requests to avoid rate-limiting
+    const pending = [];
     for (const [catName, cat] of Object.entries(catData)) {
       for (const v of cat.vendors) {
         const req = v.place_id
           ? { placeId: v.place_id }
-          : (!cat.isPicks && v.address) ? { address: v.address } : null;
-        if (!req) continue;
+          : v.address && !cat.isPicks
+            ? { address: v.address + ', ' + locationCtx }
+            : { address: v.name + ', ' + locationCtx };
+        pending.push({ req, v, catName, cat });
+      }
+    }
+    pending.forEach(({ req, v, catName, cat }, idx) => {
+      setTimeout(() => {
         const pinColor = cat.isPicks ? '#FD5247' : '#39083A';
         const cleanName = v.name ? v.name.split(',')[0].trim() : v.name;
         const popupHtml = `<div style="font-family:'DM Sans',sans-serif;max-width:220px;padding:2px 0;">
@@ -1249,8 +1258,8 @@ async function renderClientGuide(guide, isAgent) {
           marker.addListener('click', () => { infoWindow.setContent(popupHtml); infoWindow.open(map, marker); });
           if (pinCount > 1) map.fitBounds(bounds); else map.setCenter(pos);
         });
-      }
-    }
+      }, idx * 150);
+    });
   }
   renderCats();
   document.getElementById('screen-guide').classList.add('loaded');
