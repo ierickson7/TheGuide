@@ -1204,7 +1204,7 @@ async function renderClientGuide(guide, isAgent) {
     }
     document.getElementById('guide-content').innerHTML = html;
   }
-  function initGuideMap() {
+  async function initGuideMap() {
     if (!window.google || !window.google.maps) return;
     const mapEl = document.getElementById('guide-map');
     const map = new google.maps.Map(mapEl, {
@@ -1215,42 +1215,39 @@ async function renderClientGuide(guide, isAgent) {
       fullscreenControl: false,
       clickableIcons: false,
     });
-    const service = new google.maps.places.PlacesService(map);
     const infoWindow = new google.maps.InfoWindow();
     const bounds = new google.maps.LatLngBounds();
     let pinCount = 0;
     map.addListener('click', () => infoWindow.close());
-    const pending = [];
     for (const [catName, cat] of Object.entries(catData)) {
       for (const v of cat.vendors) {
         if (!v.place_id) continue;
-        pending.push({ v, catName, cat });
-      }
-    }
-    pending.forEach(({ v, catName, cat }, idx) => {
-      setTimeout(() => {
-        const pinColor = cat.isPicks ? '#FD5247' : '#39083A';
-        const cleanName = v.name ? v.name.split(',')[0].trim() : v.name;
-        const popupHtml = `<div style="font-family:'DM Sans',sans-serif;max-width:220px;padding:2px 0;">
-          <p style="font-size:13px;font-weight:500;margin:0${v.agent_note||v.rating?' 0 5px':''}">${cleanName}</p>
-          ${v.agent_note ? `<p style="font-size:12px;color:#555;font-style:italic;margin:0 0 4px">"${v.agent_note}"</p>` : ''}
-          ${v.rating ? `<p style="font-size:11px;color:#c07a00;margin:0">${stars(v.rating)} ${v.rating}</p>` : ''}
-          ${!v.agent_note && !v.rating ? `<p style="font-size:11px;color:#888;margin:0">${catName}</p>` : ''}
-        </div>`;
-        service.getDetails({ placeId: v.place_id, fields: ['geometry'] }, (place, status) => {
-          if (status !== google.maps.places.PlacesServiceStatus.OK || !place?.geometry) return;
-          const pos = place.geometry.location;
+        try {
+          const place = new google.maps.places.Place({ id: v.place_id });
+          await place.fetchFields({ fields: ['location'] });
+          if (!place.location) continue;
+          const pos = place.location;
           bounds.extend(pos);
           pinCount++;
+          const pinColor = cat.isPicks ? '#FD5247' : '#39083A';
+          const cleanName = v.name ? v.name.split(',')[0].trim() : v.name;
+          const popupHtml = `<div style="font-family:'DM Sans',sans-serif;max-width:220px;padding:2px 0;">
+            <p style="font-size:13px;font-weight:500;margin:0${v.agent_note||v.rating?' 0 5px':''}">${cleanName}</p>
+            ${v.agent_note ? `<p style="font-size:12px;color:#555;font-style:italic;margin:0 0 4px">"${v.agent_note}"</p>` : ''}
+            ${v.rating ? `<p style="font-size:11px;color:#c07a00;margin:0">${stars(v.rating)} ${v.rating}</p>` : ''}
+            ${!v.agent_note && !v.rating ? `<p style="font-size:11px;color:#888;margin:0">${catName}</p>` : ''}
+          </div>`;
           const marker = new google.maps.Marker({
             position: pos, map, title: cleanName,
             icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: pinColor, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 8 },
           });
           marker.addListener('click', () => { infoWindow.setContent(popupHtml); infoWindow.open(map, marker); });
           if (pinCount > 1) map.fitBounds(bounds); else map.setCenter(pos);
-        });
-      }, idx * 150);
-    });
+        } catch(e) {
+          console.warn('Could not fetch place:', v.place_id, e);
+        }
+      }
+    }
   }
   renderCats();
   document.getElementById('screen-guide').classList.add('loaded');
