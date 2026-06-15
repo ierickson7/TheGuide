@@ -692,6 +692,7 @@ async function confirmDelete() {
 
 function startNewGuide() {
   setupData = { zip: '', address: '', neighborhood: '', vendors: {}, removed: {}, picks: [], guideId: null, customCats: [] };
+  _neighborhoodBoundsCache = null;
   document.getElementById('zip-input').value = '';
   const hoodInput = document.getElementById('hood-input');
   if (hoodInput) hoodInput.value = '';
@@ -844,8 +845,27 @@ function renderPicks() {
 }
 
 let pendingPickPlaceId = null;
+let _neighborhoodBoundsCache = null;
 
-function initPickAutocomplete() {
+async function getNeighborhoodBounds() {
+  if (_neighborhoodBoundsCache) return _neighborhoodBoundsCache;
+  const query = setupData.neighborhood || setupData.zip;
+  if (!query || !window.google?.maps) return null;
+  try {
+    const { Place } = await google.maps.importLibrary('places');
+    const { places } = await Place.searchByText({ textQuery: query, fields: ['location'], maxResultCount: 1 });
+    const loc = places && places[0] && places[0].location;
+    if (!loc) return null;
+    const off = 0.2;
+    _neighborhoodBoundsCache = new google.maps.LatLngBounds(
+      { lat: loc.lat() - off, lng: loc.lng() - off },
+      { lat: loc.lat() + off, lng: loc.lng() + off }
+    );
+    return _neighborhoodBoundsCache;
+  } catch(_) { return null; }
+}
+
+async function initPickAutocomplete() {
   const input = document.getElementById('pick-name');
   if (!input || !window.google?.maps?.places) {
     setTimeout(initPickAutocomplete, 300);
@@ -858,6 +878,7 @@ function initPickAutocomplete() {
       types: ['establishment'],
       fields: ['name', 'place_id', 'types']
     });
+    getNeighborhoodBounds().then(b => { if (b) ac.setBounds(b); });
     ac.addListener('place_changed', () => {
       const place = ac.getPlace();
       if (place.place_id) {
@@ -907,6 +928,7 @@ async function editGuide(guideId) {
   const cats = await dbFetch('categories?guide_id=eq.' + guideId + '&order=is_base.desc,sort_order.asc&select=*');
   if (!cats) return;
   setupData = { zip: guide.zip, address: '', neighborhood: guide.neighborhood, vendors: {}, removed: {}, picks: [], guideId, slug: guide.slug, customCats: [] };
+  _neighborhoodBoundsCache = null;
   for (const cat of cats) {
     const vendors = await dbFetch('vendors?category_id=eq.' + cat.id + '&order=rating.desc&select=*');
     if (!vendors) continue;
@@ -1429,6 +1451,7 @@ function initCustomCatAutocomplete(i) {
       types: ['establishment'],
       fields: ['name', 'place_id']
     });
+    getNeighborhoodBounds().then(b => { if (b) ac.setBounds(b); });
     ac.addListener('place_changed', () => {
       const place = ac.getPlace();
       if (place.place_id) {
