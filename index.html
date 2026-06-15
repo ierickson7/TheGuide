@@ -1280,15 +1280,17 @@ async function renderClientGuide(guide, isAgent) {
     async function getPlaceData(v) {
       if (v.place_id) {
         const place = new Place({ id: v.place_id });
-        await place.fetchFields({ fields: ['location', 'websiteURI', 'userRatingCount'] });
-        return { pos: place.location || null, website: place.websiteURI || null, reviewCount: place.userRatingCount ?? null };
+        await place.fetchFields({ fields: ['location', 'websiteURI', 'userRatingCount', 'photos'] });
+        const photoUrl = place.photos?.[0]?.getURI({ maxWidth: 400 }) || null;
+        return { pos: place.location || null, website: place.websiteURI || null, reviewCount: place.userRatingCount ?? null, photoUrl };
       }
       const query = v.name + (neighborhood ? ' ' + neighborhood : '');
-      const opts = { textQuery: query, fields: ['location', 'websiteURI', 'userRatingCount'], maxResultCount: 1 };
+      const opts = { textQuery: query, fields: ['location', 'websiteURI', 'userRatingCount', 'photos'], maxResultCount: 1 };
       if (locationBias) opts.locationBias = locationBias;
       const { places } = await Place.searchByText(opts);
       const p = places && places[0];
-      return { pos: (p && p.location) || null, website: (p && p.websiteURI) || null, reviewCount: (p && p.userRatingCount) ?? null };
+      const photoUrl = p?.photos?.[0]?.getURI({ maxWidth: 400 }) || null;
+      return { pos: (p && p.location) || null, website: (p && p.websiteURI) || null, reviewCount: (p && p.userRatingCount) ?? null, photoUrl };
     }
 
     const BASE_CAT_EMOJIS = {
@@ -1311,7 +1313,7 @@ async function renderClientGuide(guide, isAgent) {
       for (const v of cat.vendors) {
         if (!v.name) continue;
         try {
-          const { pos, website, reviewCount } = await getPlaceData(v);
+          const { pos, website, reviewCount, photoUrl } = await getPlaceData(v);
           if (!pos) continue;
           if (reviewCount !== null && reviewCount < 50) continue;
           bounds.extend(pos);
@@ -1319,7 +1321,8 @@ async function renderClientGuide(guide, isAgent) {
           if (!catPlaced) { catPlaced = true; legendItems.push({ name: catName, emoji, dot: cat.isPicks ? '#FD5247' : false }); }
           const cleanName = v.name.split(',')[0].trim();
           const hasExtra = v.agent_note || v.rating || website;
-          const popupHtml = `<div style="font-family:'DM Sans',sans-serif;max-width:220px;padding:2px 0;">
+          const popupHtml = `<div style="font-family:'DM Sans',sans-serif;width:220px;padding:2px 0;">
+            ${photoUrl ? `<img src="${photoUrl}" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px;display:block;" loading="lazy" />` : ''}
             <p style="font-size:13px;font-weight:500;margin:0${hasExtra?' 0 5px':''}">${cleanName}</p>
             ${v.agent_note ? `<p style="font-size:12px;color:#555;font-style:italic;margin:0 0 4px">"${v.agent_note}"</p>` : ''}
             ${v.rating ? `<p style="font-size:11px;color:#c07a00;margin:0${website?' 0 4px':''}">${stars(v.rating)} ${v.rating}</p>` : ''}
