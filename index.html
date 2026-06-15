@@ -1269,9 +1269,22 @@ async function renderClientGuide(guide, isAgent) {
       return { pos: (p && p.location) || null, website: (p && p.websiteURI) || null };
     }
 
+    const BASE_CAT_EMOJIS = {
+      'restaurants': '🍽️',
+      'coffee': '☕',
+      'grocery': '🛒',
+      'home services': '🔧',
+      'healthcare': '🩺',
+      'parks': '🍃',
+      "agent's picks": '⭐', 'picks': '⭐',
+      'bars': '🍺', 'nightlife': '🍺',
+      'gyms': '🏋️', 'gym': '🏋️', 'fitness': '🏋️',
+      'schools': '🎒',
+    };
+
     const legendItems = [];
     for (const [catName, cat] of Object.entries(catData)) {
-      const emoji = cat.emoji || '📍';
+      const emoji = cat.emoji || BASE_CAT_EMOJIS[catName.toLowerCase()] || '📍';
       let catPlaced = false;
       for (const v of cat.vendors) {
         if (!v.name) continue;
